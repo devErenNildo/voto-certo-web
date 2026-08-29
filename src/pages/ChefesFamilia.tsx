@@ -65,7 +65,11 @@ export const ChefesFamilia = () => {
   const resetForm = () => setFormData({ id: 0, nome: '', cpf: '', tituloEleitor: '', zona: '', secao: '', telefone: '', endereco: '', dataNascimento: '' });
 
   const handleEdit = (chefe: ChefeFamiliaResponse) => {
-    setFormData({ ...chefe });
+    setFormData({ 
+      ...chefe,
+      telefone: chefe.telefone || '',
+      dataNascimento: chefe.dataNascimento || ''
+    });
     setIsFormOpen(true);
   };
 

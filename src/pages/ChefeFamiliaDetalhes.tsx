@@ -73,7 +73,12 @@ export const ChefeFamiliaDetalhes = () => {
   const resetForm = () => setFormData({ id: 0, nome: '', tituloEleitor: '', zona: '', secao: '', chefeFamiliaId: Number(id), telefone: '', dataNascimento: '' });
 
   const handleEdit = (eleitor: IntegranteResponse) => {
-    setFormData({ ...eleitor, chefeFamiliaId: Number(id) });
+    setFormData({ 
+      ...eleitor, 
+      telefone: eleitor.telefone || '',
+      dataNascimento: eleitor.dataNascimento || '',
+      chefeFamiliaId: Number(id) 
+    });
     setIsFormOpen(true);
   };
 

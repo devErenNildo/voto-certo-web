@@ -74,7 +74,11 @@ export const Integrantes = () => {
   const resetForm = () => setFormData({ id: 0, nome: '', tituloEleitor: '', zona: '', secao: '', chefeFamiliaId: chefes.length > 0 ? chefes[0].id : 0, telefone: '', dataNascimento: '' });
 
   const handleEdit = (integrante: IntegranteResponse) => {
-    setFormData({ ...integrante });
+    setFormData({ 
+      ...integrante,
+      telefone: integrante.telefone || '',
+      dataNascimento: integrante.dataNascimento || ''
+    });
     setIsFormOpen(true);
   };
 
