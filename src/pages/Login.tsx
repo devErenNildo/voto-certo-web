@@ -21,6 +21,8 @@ export const Login = () => {
     try {
       const response = await api.post('/auth/login', { username, password });
       login(response.data);
+      // Salva as credenciais para o auto-login no interceptor do api.ts
+      localStorage.setItem('credentials', JSON.stringify({ username, password }));
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao realizar login. Verifique suas credenciais.');
