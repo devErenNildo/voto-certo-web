@@ -5,7 +5,8 @@ import type { ChefeFamiliaResponse } from '../types';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { Plus, Edit2, Trash2, X, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Search, Users } from 'lucide-react';
+import { maskDate, parseDateToApi, parseDateFromApi, maskCPF, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
 
@@ -15,10 +16,11 @@ export const ChefesFamilia = () => {
   const [filteredChefes, setFilteredChefes] = useState<ChefeFamiliaResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [liderancas, setLiderancas] = useState<any[]>([]);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
-    id: 0, nome: '', cpf: '', tituloEleitor: '', zona: '', secao: '', telefone: '', endereco: '', dataNascimento: ''
+    id: 0, nome: '', cpf: '', rg: '', tituloEleitor: '', zona: '', secao: '', telefone: '', endereco: '', bairro: '', cidade: '', dataNascimento: '', liderancaId: 0
   });
 
   const fetchChefes = async () => {
@@ -48,10 +50,14 @@ export const ChefesFamilia = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...formData,
+        dataNascimento: parseDateToApi(formData.dataNascimento)
+      };
       if (formData.id) {
-        await api.put(`/api/chefes-familia/${formData.id}`, formData);
+        await api.put(`/api/chefes-familia/${formData.id}`, payload);
       } else {
-        await api.post('/api/chefes-familia', formData);
+        await api.post('/api/chefes-familia', payload);
       }
       setIsFormOpen(false);
       resetForm();
@@ -62,13 +68,13 @@ export const ChefesFamilia = () => {
     }
   };
 
-  const resetForm = () => setFormData({ id: 0, nome: '', cpf: '', tituloEleitor: '', zona: '', secao: '', telefone: '', endereco: '', dataNascimento: '' });
+  const resetForm = () => setFormData({ id: 0, nome: '', cpf: '', rg: '', tituloEleitor: '', zona: '', secao: '', telefone: '', endereco: '', bairro: '', cidade: '', dataNascimento: '', liderancaId: 0 });
 
   const handleEdit = (chefe: ChefeFamiliaResponse) => {
     setFormData({ 
       ...chefe,
       telefone: chefe.telefone || '',
-      dataNascimento: chefe.dataNascimento || ''
+      dataNascimento: parseDateFromApi(chefe.dataNascimento || '')
     });
     setIsFormOpen(true);
   };
@@ -118,16 +124,33 @@ export const ChefesFamilia = () => {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Nome Completo" required value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} className="md:col-span-2" />
-              <Input label="CPF" required value={formData.cpf} onChange={e => setFormData({ ...formData, cpf: e.target.value })} />
-              <Input label="Telefone" value={formData.telefone} onChange={e => setFormData({ ...formData, telefone: e.target.value })} />
-              <Input type="date" label="Data de Nascimento" value={formData.dataNascimento} onChange={e => setFormData({ ...formData, dataNascimento: e.target.value })} />
-              <Input label="Título de Eleitor" required value={formData.tituloEleitor} onChange={e => setFormData({ ...formData, tituloEleitor: e.target.value })} className="md:col-span-2" />
-              <div className="grid grid-cols-2 gap-2">
-                <Input label="Zona" required value={formData.zona} onChange={e => setFormData({ ...formData, zona: e.target.value })} />
-                <Input label="Seção" required value={formData.secao} onChange={e => setFormData({ ...formData, secao: e.target.value })} />
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Liderança Vinculada</label>
+                <select
+                  className="flex h-12 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={formData.liderancaId}
+                  onChange={e => setFormData({ ...formData, liderancaId: Number(e.target.value) })}
+                >
+                  <option value={0}>Selecione uma liderança (opcional)</option>
+                  {liderancas.map(l => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
               </div>
-              <Input label="Endereço Completo" value={formData.endereco} onChange={e => setFormData({ ...formData, endereco: e.target.value })} className="md:col-span-2" />
+
+              <Input label="Nome Completo" value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} className="md:col-span-2" />
+              
+              <Input label="CPF" inputMode="numeric" value={formData.cpf} onChange={e => setFormData({ ...formData, cpf: maskCPF(e.target.value) })} />
+              <Input label="RG" value={formData.rg} onChange={e => setFormData({ ...formData, rg: e.target.value })} />
+              
+              <Input type="text" inputMode="numeric" placeholder="dd/mm/aaaa" label="Data de Nascimento" value={formData.dataNascimento} onChange={e => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })} />
+              <Input label="Telefone" inputMode="numeric" value={formData.telefone} onChange={e => setFormData({ ...formData, telefone: maskPhone(e.target.value) })} />
+              
+              <Input label="Título de Eleitor" value={formData.tituloEleitor} onChange={e => setFormData({ ...formData, tituloEleitor: e.target.value })} className="md:col-span-2" />
+              
+              <Input label="Endereço" value={formData.endereco} onChange={e => setFormData({ ...formData, endereco: e.target.value })} className="md:col-span-2" />
+              <Input label="Bairro" value={formData.bairro} onChange={e => setFormData({ ...formData, bairro: e.target.value })} />
+              <Input label="Cidade" value={formData.cidade} onChange={e => setFormData({ ...formData, cidade: e.target.value })} />
 
               <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-200">
                 <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>

@@ -5,6 +5,7 @@ import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Plus, Edit2, Trash2, X, Search } from 'lucide-react';
+import { maskDate, parseDateToApi, parseDateFromApi, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
 
@@ -57,10 +58,15 @@ export const Integrantes = () => {
 
     try {
       const { id: integranteId, ...requestBody } = formData;
+      const payload = {
+        ...requestBody,
+        dataNascimento: parseDateToApi(formData.dataNascimento)
+      };
+
       if (formData.id) {
-        await api.put(`/api/integrantes/${formData.id}`, requestBody);
+        await api.put(`/api/integrantes/${formData.id}`, payload);
       } else {
-        await api.post('/api/integrantes', requestBody);
+        await api.post('/api/integrantes', payload);
       }
       setIsFormOpen(false);
       resetForm();
@@ -77,7 +83,7 @@ export const Integrantes = () => {
     setFormData({ 
       ...integrante,
       telefone: integrante.telefone || '',
-      dataNascimento: integrante.dataNascimento || ''
+      dataNascimento: parseDateFromApi(integrante.dataNascimento || '')
     });
     setIsFormOpen(true);
   };
@@ -133,23 +139,22 @@ export const Integrantes = () => {
                   className="flex h-12 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   value={formData.chefeFamiliaId}
                   onChange={e => setFormData({ ...formData, chefeFamiliaId: Number(e.target.value) })}
-                  required
                 >
-                  <option value={0} disabled>Selecione um chefe de família</option>
+                  <option value={0}>Selecione um chefe de família (opcional)</option>
                   {chefes.map(c => (
                     <option key={c.id} value={c.id}>{c.nome} (Liderança: {c.liderancaNome})</option>
                   ))}
                 </select>
               </div>
 
-              <Input label="Nome Completo" required value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} className="md:col-span-2" />
-              <Input label="Título de Eleitor" required value={formData.tituloEleitor} onChange={e => setFormData({ ...formData, tituloEleitor: e.target.value })} className="md:col-span-2" />
+              <Input label="Nome Completo" value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} className="md:col-span-2" />
+              <Input label="Título de Eleitor" value={formData.tituloEleitor} onChange={e => setFormData({ ...formData, tituloEleitor: e.target.value })} className="md:col-span-2" />
 
-              <Input label="Zona" required value={formData.zona} onChange={e => setFormData({ ...formData, zona: e.target.value })} />
-              <Input label="Seção" required value={formData.secao} onChange={e => setFormData({ ...formData, secao: e.target.value })} />
+              <Input label="Zona" value={formData.zona} onChange={e => setFormData({ ...formData, zona: e.target.value })} />
+              <Input label="Seção" value={formData.secao} onChange={e => setFormData({ ...formData, secao: e.target.value })} />
               
-              <Input label="Telefone" value={formData.telefone} onChange={e => setFormData({ ...formData, telefone: e.target.value })} />
-              <Input type="date" label="Data de Nascimento" value={formData.dataNascimento} onChange={e => setFormData({ ...formData, dataNascimento: e.target.value })} />
+              <Input label="Telefone" inputMode="numeric" value={formData.telefone} onChange={e => setFormData({ ...formData, telefone: maskPhone(e.target.value) })} />
+              <Input type="text" inputMode="numeric" placeholder="dd/mm/aaaa" label="Data de Nascimento" value={formData.dataNascimento} onChange={e => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })} />
 
               <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-200">
                 <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>

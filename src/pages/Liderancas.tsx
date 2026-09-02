@@ -5,6 +5,7 @@ import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
+import { maskDate, parseDateToApi, parseDateFromApi, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
 
@@ -32,10 +33,15 @@ export const Liderancas = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...formData,
+        dataNascimento: parseDateToApi(formData.dataNascimento)
+      };
+
       if (formData.id) {
-        await api.put(`/api/liderancas/${formData.id}`, formData);
+        await api.put(`/api/liderancas/${formData.id}`, payload);
       } else {
-        await api.post('/api/liderancas', formData);
+        await api.post('/api/liderancas', payload);
       }
       setIsFormOpen(false);
       setFormData({ id: 0, name: '', username: '', password: '', telefone: '', dataNascimento: '', bairro: '' });
@@ -54,7 +60,7 @@ export const Liderancas = () => {
       username: lideranca.username,
       password: '', // Não traz a senha do back
       telefone: lideranca.telefone || '',
-      dataNascimento: lideranca.dataNascimento || '',
+      dataNascimento: parseDateFromApi(lideranca.dataNascimento || ''),
       bairro: lideranca.bairro || ''
     });
     setIsFormOpen(true);
@@ -99,33 +105,33 @@ export const Liderancas = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
                 label="Nome"
-                required
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
               />
               <Input
                 label="Usuário (Login)"
-                required
                 value={formData.username}
                 onChange={e => setFormData({ ...formData, username: e.target.value })}
               />
               <Input
                 label={formData.id ? "Nova Senha (opcional)" : "Senha"}
                 type="password"
-                required={!formData.id}
                 value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
               />
               <Input
                 label="Telefone"
+                inputMode="numeric"
                 value={formData.telefone}
-                onChange={e => setFormData({ ...formData, telefone: e.target.value })}
+                onChange={e => setFormData({ ...formData, telefone: maskPhone(e.target.value) })}
               />
               <Input
-                type="date"
+                type="text"
+                inputMode="numeric"
+                placeholder="dd/mm/aaaa"
                 label="Data de Nascimento"
                 value={formData.dataNascimento}
-                onChange={e => setFormData({ ...formData, dataNascimento: e.target.value })}
+                onChange={e => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })}
               />
               <Input
                 label="Bairro"
