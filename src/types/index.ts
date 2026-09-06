@@ -56,6 +56,8 @@ export interface IntegranteResponse {
 
 export interface DashboardResponse {
   totalLiderancas: number;
-  totalChefesFamilia: number;
+  totalChefesFamilia?: number;
+  totalChefes?: number;
   totalIntegrantes: number;
+  totalVotos?: number;
 }

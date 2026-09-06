@@ -48,10 +48,23 @@ export const ChefesFamilia = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.nome.trim()) {
+      toast.error('Informe o nome do chefe de família.');
+      return;
+    }
+
     try {
+      const dateApi = parseDateToApi(formData.dataNascimento);
       const payload = {
         ...formData,
-        dataNascimento: parseDateToApi(formData.dataNascimento)
+        nome: formData.nome.trim(),
+        cpf: formData.cpf?.trim() || null,
+        tituloEleitor: formData.tituloEleitor?.trim() || null,
+        zona: formData.zona?.trim() || null,
+        secao: formData.secao?.trim() || null,
+        telefone: formData.telefone?.trim() || null,
+        endereco: formData.endereco?.trim() || null,
+        dataNascimento: dateApi && dateApi.length === 10 ? dateApi : null
       };
       if (formData.id) {
         await api.put(`/api/chefes-familia/${formData.id}`, payload);
@@ -123,24 +136,71 @@ export const ChefesFamilia = () => {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Nome Completo" value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} className="md:col-span-2" />
+              <Input 
+                label="Nome Completo *" 
+                required 
+                placeholder="Ex: João da Silva" 
+                value={formData.nome} 
+                onChange={e => setFormData({ ...formData, nome: e.target.value })} 
+                className="md:col-span-2" 
+              />
               
-              <Input label="CPF" inputMode="numeric" value={formData.cpf} onChange={e => setFormData({ ...formData, cpf: maskCPF(e.target.value) })} />
-              <Input label="Telefone" inputMode="numeric" value={formData.telefone} onChange={e => setFormData({ ...formData, telefone: maskPhone(e.target.value) })} />
+              <Input 
+                label="CPF (opcional)" 
+                inputMode="numeric" 
+                placeholder="000.000.000-00" 
+                value={formData.cpf} 
+                onChange={e => setFormData({ ...formData, cpf: maskCPF(e.target.value) })} 
+              />
+              <Input 
+                label="Telefone (opcional)" 
+                inputMode="numeric" 
+                placeholder="(00) 00000-0000" 
+                value={formData.telefone} 
+                onChange={e => setFormData({ ...formData, telefone: maskPhone(e.target.value) })} 
+              />
               
-              <Input type="text" inputMode="numeric" placeholder="dd/mm/aaaa" label="Data de Nascimento" value={formData.dataNascimento} onChange={e => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })} />
-              <Input label="Título de Eleitor" value={formData.tituloEleitor} onChange={e => setFormData({ ...formData, tituloEleitor: e.target.value })} />
+              <Input 
+                type="text" 
+                inputMode="numeric" 
+                placeholder="dd/mm/aaaa" 
+                label="Data de Nascimento (opcional)" 
+                value={formData.dataNascimento} 
+                onChange={e => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })} 
+              />
+              <Input 
+                label="Título de Eleitor (opcional)" 
+                placeholder="Número do título" 
+                value={formData.tituloEleitor} 
+                onChange={e => setFormData({ ...formData, tituloEleitor: e.target.value })} 
+              />
               
               <div className="grid grid-cols-2 gap-2 md:col-span-2">
-                <Input label="Zona" value={formData.zona} onChange={e => setFormData({ ...formData, zona: e.target.value })} />
-                <Input label="Seção" value={formData.secao} onChange={e => setFormData({ ...formData, secao: e.target.value })} />
+                <Input 
+                  label="Zona (opcional)" 
+                  placeholder="Zona" 
+                  value={formData.zona} 
+                  onChange={e => setFormData({ ...formData, zona: e.target.value })} 
+                />
+                <Input 
+                  label="Seção (opcional)" 
+                  placeholder="Seção" 
+                  value={formData.secao} 
+                  onChange={e => setFormData({ ...formData, secao: e.target.value })} 
+                />
               </div>
               
-              <Input label="Endereço Completo" value={formData.endereco} onChange={e => setFormData({ ...formData, endereco: e.target.value })} className="md:col-span-2" />
+              <Input 
+                label="Endereço Completo (opcional)" 
+                placeholder="Rua, número, bairro..." 
+                value={formData.endereco} 
+                onChange={e => setFormData({ ...formData, endereco: e.target.value })} 
+                className="md:col-span-2" 
+              />
 
               <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-200">
                 <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
-                <Button type="submit">Salvar</Button>
+                <Button type="submit">Salvar Chefe</Button>
               </div>
             </form>
           </CardContent>
