@@ -7,6 +7,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { SecureImage } from '../components/SecureImage';
 import { ImageUploadInput } from '../components/ImageUploadInput';
+import { DocumentScannerBanner } from '../components/DocumentScannerBanner';
 import { Plus, Edit2, Trash2, X, Search, UserCheck } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskCPF, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
@@ -221,6 +222,23 @@ export const ChefesFamilia = () => {
                 <X size={20} />
               </button>
             </div>
+
+            <div className="mb-4">
+              <DocumentScannerBanner
+                onDataExtracted={(extracted) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    nome: extracted.nome || prev.nome,
+                    tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
+                    zona: extracted.zona || prev.zona,
+                    secao: extracted.secao || prev.secao,
+                    dataNascimento: extracted.dataNascimento || prev.dataNascimento,
+                    fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
+                  }));
+                }}
+              />
+            </div>
+
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input 
                 label="Nome Completo *" 

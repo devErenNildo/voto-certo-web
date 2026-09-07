@@ -77,3 +77,14 @@ export interface PageResponse<T> {
   first: boolean;
   empty: boolean;
 }
+
+export interface TituloExtracaoResponse {
+  nome?: string | null;
+  tituloEleitor?: string | null;
+  zona?: string | null;
+  secao?: string | null;
+  dataNascimento?: string | null;
+  fotoTitulo?: string | null;
+  mensagem?: string;
+  sucesso: boolean;
+}

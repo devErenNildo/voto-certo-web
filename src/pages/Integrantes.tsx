@@ -8,6 +8,7 @@ import { Input } from '../components/Input';
 import { SecureImage } from '../components/SecureImage';
 import { ImageUploadInput } from '../components/ImageUploadInput';
 import { PhotoModal } from '../components/PhotoModal';
+import { DocumentScannerBanner } from '../components/DocumentScannerBanner';
 import { Plus, Edit2, Trash2, X, Search, Users, UserCheck, Home, ExternalLink, FileText } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
@@ -359,6 +360,23 @@ export const Integrantes = () => {
                 <X size={20} />
               </button>
             </div>
+
+            <div className="mb-4">
+              <DocumentScannerBanner
+                onDataExtracted={(extracted) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    nome: extracted.nome || prev.nome,
+                    tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
+                    zona: extracted.zona || prev.zona,
+                    secao: extracted.secao || prev.secao,
+                    dataNascimento: extracted.dataNascimento || prev.dataNascimento,
+                    fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
+                  }));
+                }}
+              />
+            </div>
+
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="text-sm font-medium text-gray-700 mb-1 block">Chefe de Família *</label>
