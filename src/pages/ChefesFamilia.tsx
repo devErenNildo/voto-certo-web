@@ -162,6 +162,19 @@ export const ChefesFamilia = () => {
       fotoTitulo: null,
     });
 
+  const handleCloseForm = () => {
+    if (!formData.id) {
+      if (formData.fotoPerfil) {
+        api.delete(`/api/imagens/${formData.fotoPerfil}`).catch(console.warn);
+      }
+      if (formData.fotoTitulo) {
+        api.delete(`/api/imagens/${formData.fotoTitulo}`).catch(console.warn);
+      }
+    }
+    setIsFormOpen(false);
+    resetForm();
+  };
+
   const handleEdit = (chefe: ChefeFamiliaResponse) => {
     setFormData({ 
       ...chefe,
@@ -218,7 +231,7 @@ export const ChefesFamilia = () => {
           <CardContent className="pt-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">{formData.id ? 'Editar Chefe' : 'Novo Chefe'}</h2>
-              <button onClick={() => setIsFormOpen(false)} className="text-gray-500 hover:text-gray-700">
+              <button onClick={handleCloseForm} className="text-gray-500 hover:text-gray-700">
                 <X size={20} />
               </button>
             </div>
@@ -226,15 +239,20 @@ export const ChefesFamilia = () => {
             <div className="mb-4">
               <DocumentScannerBanner
                 onDataExtracted={(extracted) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    nome: extracted.nome || prev.nome,
-                    tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
-                    zona: extracted.zona || prev.zona,
-                    secao: extracted.secao || prev.secao,
-                    dataNascimento: extracted.dataNascimento || prev.dataNascimento,
-                    fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
-                  }));
+                  setFormData((prev) => {
+                    if (!prev.id && prev.fotoTitulo && extracted.fotoTitulo && prev.fotoTitulo !== extracted.fotoTitulo) {
+                      api.delete(`/api/imagens/${prev.fotoTitulo}`).catch(console.warn);
+                    }
+                    return {
+                      ...prev,
+                      nome: extracted.nome || prev.nome,
+                      tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
+                      zona: extracted.zona || prev.zona,
+                      secao: extracted.secao || prev.secao,
+                      dataNascimento: extracted.dataNascimento || prev.dataNascimento,
+                      fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
+                    };
+                  });
                 }}
               />
             </div>
@@ -318,7 +336,7 @@ export const ChefesFamilia = () => {
               </div>
 
               <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-200">
-                <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
+                <Button type="button" variant="ghost" onClick={handleCloseForm}>Cancelar</Button>
                 <Button type="submit">Salvar Chefe</Button>
               </div>
             </form>

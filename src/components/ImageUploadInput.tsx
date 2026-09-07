@@ -19,6 +19,7 @@ export const ImageUploadInput = ({
   description
 }: ImageUploadInputProps) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,6 +40,12 @@ export const ImageUploadInput = ({
       const response = await api.post('/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+
+      // Se já existia uma foto anexada sendo substituída, apaga a foto antiga do servidor
+      if (value && value !== response.data.filename) {
+        api.delete(`/api/imagens/${value}`).catch(console.warn);
+      }
+
       onChange(response.data.filename);
       toast.success('Imagem enviada com sucesso!');
     } catch (error: any) {
@@ -52,10 +59,25 @@ export const ImageUploadInput = ({
     }
   };
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
+    if (!value) return;
+    const filenameToRemove = value;
+
+    // Atualiza estado local imediatamente para ótima resposta de UI
     onChange(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+
+    // Exclui fisicamente o arquivo do servidor/disco da VPS
+    try {
+      setIsRemoving(true);
+      await api.delete(`/api/imagens/${filenameToRemove}`);
+      toast.success('Foto removida com sucesso!');
+    } catch (error: any) {
+      console.warn('Aviso: erro ao excluir foto física no servidor', error);
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -88,11 +110,12 @@ export const ImageUploadInput = ({
           </div>
           <button
             type="button"
+            disabled={isRemoving}
             onClick={handleRemove}
-            className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white transition-colors"
+            className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
             title="Remover foto"
           >
-            <X size={18} />
+            {isRemoving ? <Loader2 size={18} className="animate-spin text-red-500" /> : <X size={18} />}
           </button>
         </div>
       ) : (
