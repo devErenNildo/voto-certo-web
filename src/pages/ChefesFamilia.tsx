@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import type { ChefeFamiliaResponse } from '../types';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { Plus, Edit2, Trash2, X, Search } from 'lucide-react';
+import { SecureImage } from '../components/SecureImage';
+import { ImageUploadInput } from '../components/ImageUploadInput';
+import { Plus, Edit2, Trash2, X, Search, UserCheck } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskCPF, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
@@ -16,32 +18,93 @@ export const ChefesFamilia = () => {
   const [filteredChefes, setFilteredChefes] = useState<ChefeFamiliaResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    id: 0, nome: '', cpf: '', tituloEleitor: '', zona: '', secao: '', telefone: '', endereco: '', dataNascimento: ''
+  const [formData, setFormData] = useState<{
+    id: number;
+    nome: string;
+    cpf: string;
+    tituloEleitor: string;
+    zona: string;
+    secao: string;
+    telefone: string;
+    endereco: string;
+    dataNascimento: string;
+    fotoPerfil: string | null;
+    fotoTitulo: string | null;
+  }>({
+    id: 0,
+    nome: '',
+    cpf: '',
+    tituloEleitor: '',
+    zona: '',
+    secao: '',
+    telefone: '',
+    endereco: '',
+    dataNascimento: '',
+    fotoPerfil: null,
+    fotoTitulo: null,
   });
 
-  const fetchChefes = async () => {
+  const fetchChefes = async (pageNumber: number = 0, isInitial: boolean = false) => {
     try {
-      const response = await api.get('/api/chefes-familia');
-      setChefes(response.data);
-      setFilteredChefes(response.data);
+      if (isInitial) setIsLoading(true);
+      else setIsLoadingMore(true);
+
+      const response = await api.get(`/api/chefes-familia?page=${pageNumber}&size=12`);
+      const data = response.data;
+
+      if (data && Array.isArray(data.content)) {
+        if (pageNumber === 0) {
+          setChefes(data.content);
+        } else {
+          setChefes((prev) => [...prev, ...data.content]);
+        }
+        setHasMore(!data.last && data.number + 1 < data.totalPages);
+        setPage(pageNumber);
+      } else if (Array.isArray(data)) {
+        setChefes(data);
+        setHasMore(false);
+      }
     } catch (error) {
       console.error('Erro ao buscar chefes', error);
+      toast.error('Erro ao carregar chefes de família.');
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    fetchChefes();
+    fetchChefes(0, true);
   }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore && !searchTerm) {
+          fetchChefes(page + 1, false);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, isLoadingMore, page, searchTerm]);
 
   useEffect(() => {
     const results = chefes.filter(c =>
       c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.cpf.includes(searchTerm)
+      (c.cpf && c.cpf.includes(searchTerm)) ||
+      (c.tituloEleitor && c.tituloEleitor.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredChefes(results);
   }, [searchTerm, chefes]);
@@ -64,8 +127,11 @@ export const ChefesFamilia = () => {
         secao: formData.secao?.trim() || null,
         telefone: formData.telefone?.trim() || null,
         endereco: formData.endereco?.trim() || null,
-        dataNascimento: dateApi && dateApi.length === 10 ? dateApi : null
+        dataNascimento: dateApi && dateApi.length === 10 ? dateApi : null,
+        fotoPerfil: formData.fotoPerfil || null,
+        fotoTitulo: formData.fotoTitulo || null,
       };
+
       if (formData.id) {
         await api.put(`/api/chefes-familia/${formData.id}`, payload);
       } else {
@@ -74,19 +140,39 @@ export const ChefesFamilia = () => {
       setIsFormOpen(false);
       resetForm();
       toast.success('Chefe de família salvo com sucesso!');
-      fetchChefes();
+      fetchChefes(0, true);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erro ao salvar chefe de família');
     }
   };
 
-  const resetForm = () => setFormData({ id: 0, nome: '', cpf: '', tituloEleitor: '', zona: '', secao: '', telefone: '', endereco: '', dataNascimento: '' });
+  const resetForm = () =>
+    setFormData({
+      id: 0,
+      nome: '',
+      cpf: '',
+      tituloEleitor: '',
+      zona: '',
+      secao: '',
+      telefone: '',
+      endereco: '',
+      dataNascimento: '',
+      fotoPerfil: null,
+      fotoTitulo: null,
+    });
 
   const handleEdit = (chefe: ChefeFamiliaResponse) => {
     setFormData({ 
       ...chefe,
+      cpf: chefe.cpf || '',
+      tituloEleitor: chefe.tituloEleitor || '',
+      zona: chefe.zona || '',
+      secao: chefe.secao || '',
+      endereco: chefe.endereco || '',
       telefone: chefe.telefone || '',
-      dataNascimento: parseDateFromApi(chefe.dataNascimento || '')
+      dataNascimento: parseDateFromApi(chefe.dataNascimento || ''),
+      fotoPerfil: chefe.fotoPerfil || null,
+      fotoTitulo: chefe.fotoTitulo || null,
     });
     setIsFormOpen(true);
   };
@@ -97,7 +183,7 @@ export const ChefesFamilia = () => {
       try {
         await api.delete(`/api/chefes-familia/${id}`);
         toast.success('Chefe de família excluído.');
-        fetchChefes();
+        fetchChefes(0, true);
       } catch (error) {
         toast.error('Erro ao excluir.');
       }
@@ -119,7 +205,7 @@ export const ChefesFamilia = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <Input
             className="pl-10"
-            placeholder="Buscar por nome ou CPF..."
+            placeholder="Buscar por nome, CPF ou título..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
@@ -198,6 +284,21 @@ export const ChefesFamilia = () => {
                 className="md:col-span-2" 
               />
 
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+                <ImageUploadInput
+                  label="Foto de Perfil (Opcional)"
+                  tipo="perfil"
+                  value={formData.fotoPerfil}
+                  onChange={(filename) => setFormData({ ...formData, fotoPerfil: filename })}
+                />
+                <ImageUploadInput
+                  label="Foto do Título de Eleitor (Opcional)"
+                  tipo="titulo"
+                  value={formData.fotoTitulo}
+                  onChange={(filename) => setFormData({ ...formData, fotoTitulo: filename })}
+                />
+              </div>
+
               <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-200">
                 <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
                 <Button type="submit">Salvar Chefe</Button>
@@ -217,25 +318,48 @@ export const ChefesFamilia = () => {
             <Card key={chefe.id} className="hover:shadow-md transition-shadow cursor-pointer hover:border-primary/50" onClick={() => navigate(`/chefes-familia/${chefe.id}`)}>
               <CardContent className="p-4 flex flex-col h-full justify-between">
                 <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg text-gray-900">{chefe.nome}</h3>
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
+                        {chefe.fotoPerfil ? (
+                          <SecureImage
+                            filename={chefe.fotoPerfil}
+                            alt={chefe.nome}
+                            className="w-full h-full object-cover"
+                            fallback={
+                              <div className="flex items-center justify-center w-full h-full text-primary font-bold">
+                                <UserCheck size={22} />
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center w-full h-full text-primary font-bold">
+                            <UserCheck size={22} />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg text-gray-900">{chefe.nome}</h3>
+                        <span className="text-xs text-primary font-medium">Chefe de Família</span>
+                      </div>
+                    </div>
                     <div className="flex gap-1 bg-gray-100 rounded-full px-2 py-1">
-                      <button onClick={(e) => { e.stopPropagation(); handleEdit(chefe); }} className="p-1.5 text-gray-500 hover:text-blue-600 rounded-full hover:bg-white transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); handleEdit(chefe); }} className="p-1.5 text-gray-500 hover:text-blue-600 rounded-full hover:bg-white transition-colors" title="Editar">
                         <Edit2 size={16} />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(chefe.id); }} className="p-1.5 text-gray-500 hover:text-red-600 rounded-full hover:bg-white transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); handleDelete(chefe.id); }} className="p-1.5 text-gray-500 hover:text-red-600 rounded-full hover:bg-white transition-colors" title="Excluir">
                         <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-600 mt-3">
-                    <div><span className="text-gray-400 block text-xs">CPF</span>{chefe.cpf}</div>
+                  <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-600 mt-3 bg-gray-50/70 p-3 rounded-lg">
+                    <div><span className="text-gray-400 block text-xs">CPF</span>{chefe.cpf || 'Não informado'}</div>
                     <div><span className="text-gray-400 block text-xs">Telefone</span>{chefe.telefone || '-'}</div>
                     {chefe.dataNascimento && (
                       <div><span className="text-gray-400 block text-xs">Nascimento</span>{new Date(chefe.dataNascimento).toLocaleDateString('pt-BR')}</div>
                     )}
-                    <div className={chefe.dataNascimento ? "" : "col-span-2"}><span className="text-gray-400 block text-xs">Título</span>{chefe.tituloEleitor}</div>
-                    <div><span className="text-gray-400 block text-xs">Local</span>Z: {chefe.zona} | S: {chefe.secao}</div>
+                    <div className={chefe.dataNascimento ? "" : "col-span-2"}><span className="text-gray-400 block text-xs">Título</span>{chefe.tituloEleitor || '-'}</div>
+                    <div><span className="text-gray-400 block text-xs">Local</span>Z: {chefe.zona || '-'} | S: {chefe.secao || '-'}</div>
                     <div className="col-span-2"><span className="text-gray-400 block text-xs">Endereço</span>{chefe.endereco || '-'}</div>
                   </div>
                 </div>
@@ -250,6 +374,19 @@ export const ChefesFamilia = () => {
               Nenhum chefe de família encontrado.
             </div>
           )}
+
+          {/* Sentinel for Infinite Scroll */}
+          <div ref={observerTarget} className="py-4 flex justify-center w-full col-span-full">
+            {isLoadingMore && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                Carregando mais chefes de família...
+              </div>
+            )}
+            {!hasMore && chefes.length > 0 && !isLoading && (
+              <span className="text-xs text-gray-400">Todos os chefes foram carregados</span>
+            )}
+          </div>
         </div>
       )}
     </div>

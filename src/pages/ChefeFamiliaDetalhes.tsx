@@ -5,7 +5,10 @@ import type { ChefeFamiliaResponse, IntegranteResponse } from '../types';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { ArrowLeft, Plus, Edit2, Trash2, X, Users, UserCheck } from 'lucide-react';
+import { SecureImage } from '../components/SecureImage';
+import { ImageUploadInput } from '../components/ImageUploadInput';
+import { PhotoModal } from '../components/PhotoModal';
+import { ArrowLeft, Plus, Edit2, Trash2, X, Users, UserCheck, FileText } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
@@ -17,9 +20,41 @@ export const ChefeFamiliaDetalhes = () => {
   const [eleitores, setEleitores] = useState<IntegranteResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [selectedTitlePhoto, setSelectedTitlePhoto] = useState<{
+    isOpen: boolean;
+    title: string;
+    filename?: string | null;
+    subtitle?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    filename: null,
+    subtitle: '',
+  });
+
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    id: 0, nome: '', tituloEleitor: '', zona: '', secao: '', chefeFamiliaId: Number(id), telefone: '', dataNascimento: ''
+  const [formData, setFormData] = useState<{
+    id: number;
+    nome: string;
+    tituloEleitor: string;
+    zona: string;
+    secao: string;
+    chefeFamiliaId: number;
+    telefone: string;
+    dataNascimento: string;
+    fotoPerfil: string | null;
+    fotoTitulo: string | null;
+  }>({
+    id: 0,
+    nome: '',
+    tituloEleitor: '',
+    zona: '',
+    secao: '',
+    chefeFamiliaId: Number(id),
+    telefone: '',
+    dataNascimento: '',
+    fotoPerfil: null,
+    fotoTitulo: null,
   });
 
   const fetchData = async () => {
@@ -70,6 +105,8 @@ export const ChefeFamiliaDetalhes = () => {
         secao: formData.secao.trim() || null,
         telefone: formData.telefone.trim() || null,
         dataNascimento: (dateApi && dateApi.length === 10) ? dateApi : null,
+        fotoPerfil: formData.fotoPerfil || null,
+        fotoTitulo: formData.fotoTitulo || null,
       };
 
       if (formData.id) {
@@ -86,7 +123,19 @@ export const ChefeFamiliaDetalhes = () => {
     }
   };
 
-  const resetForm = () => setFormData({ id: 0, nome: '', tituloEleitor: '', zona: '', secao: '', chefeFamiliaId: Number(id), telefone: '', dataNascimento: '' });
+  const resetForm = () =>
+    setFormData({
+      id: 0,
+      nome: '',
+      tituloEleitor: '',
+      zona: '',
+      secao: '',
+      chefeFamiliaId: Number(id),
+      telefone: '',
+      dataNascimento: '',
+      fotoPerfil: null,
+      fotoTitulo: null,
+    });
 
   const handleEdit = (eleitor: IntegranteResponse) => {
     setFormData({ 
@@ -97,7 +146,9 @@ export const ChefeFamiliaDetalhes = () => {
       secao: eleitor.secao || '',
       telefone: eleitor.telefone || '',
       dataNascimento: parseDateFromApi(eleitor.dataNascimento || ''),
-      chefeFamiliaId: Number(id) 
+      chefeFamiliaId: Number(id),
+      fotoPerfil: eleitor.fotoPerfil || null,
+      fotoTitulo: eleitor.fotoTitulo || null,
     });
     setIsFormOpen(true);
   };
@@ -139,13 +190,28 @@ export const ChefeFamiliaDetalhes = () => {
 
       <Card className="bg-white border-primary/30 shadow-sm border-l-4 border-l-primary">
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-lg text-primary">
-                <UserCheck size={24} />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-4">
+              <div className="relative w-16 h-16 rounded-full overflow-hidden shrink-0 bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
+                {chefe.fotoPerfil ? (
+                  <SecureImage
+                    filename={chefe.fotoPerfil}
+                    alt={chefe.nome}
+                    className="w-full h-full object-cover"
+                    fallback={
+                      <div className="flex items-center justify-center w-full h-full text-primary font-bold">
+                        <UserCheck size={28} />
+                      </div>
+                    }
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full text-primary font-bold">
+                    <UserCheck size={28} />
+                  </div>
+                )}
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-xl font-bold text-gray-900">{chefe.nome}</h2>
                   <span className="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                     Chefe de Família (1º Voto)
@@ -154,6 +220,23 @@ export const ChefeFamiliaDetalhes = () => {
                 <p className="text-sm text-gray-500">Liderança Responsável: {chefe.liderancaNome}</p>
               </div>
             </div>
+
+            {chefe.fotoTitulo && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedTitlePhoto({
+                  isOpen: true,
+                  title: `Título de Eleitor - ${chefe.nome}`,
+                  filename: chefe.fotoTitulo,
+                  subtitle: `Título: ${chefe.tituloEleitor || '-'} | Zona: ${chefe.zona || '-'} | Seção: ${chefe.secao || '-'}`
+                })}
+                className="text-primary hover:bg-primary/10 self-start sm:self-auto"
+              >
+                <FileText size={16} className="mr-1.5" />
+                Ver Foto do Título
+              </Button>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm bg-gray-50/70 p-4 rounded-lg">
             <div><span className="block text-gray-500 text-xs uppercase font-medium">CPF</span>{chefe.cpf || 'Não informado'}</div>
@@ -190,7 +273,7 @@ export const ChefeFamiliaDetalhes = () => {
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="text-lg font-semibold">{formData.id ? 'Editar Eleitor' : 'Novo Eleitor da Família'}</h2>
-                <p className="text-xs text-gray-500">Apenas o nome é obrigatório. Todos os demais dados são opcionais.</p>
+                <p className="text-xs text-gray-500">Apenas o nome é obrigatório. Todos os demais dados e fotos são opcionais.</p>
               </div>
               <button onClick={() => setIsFormOpen(false)} className="text-gray-500 hover:text-gray-700">
                 <X size={20} />
@@ -243,6 +326,21 @@ export const ChefeFamiliaDetalhes = () => {
                 onChange={e => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })} 
               />
 
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+                <ImageUploadInput
+                  label="Foto de Perfil do Eleitor"
+                  tipo="perfil"
+                  value={formData.fotoPerfil}
+                  onChange={(filename) => setFormData({ ...formData, fotoPerfil: filename })}
+                />
+                <ImageUploadInput
+                  label="Foto do Título de Eleitor"
+                  tipo="titulo"
+                  value={formData.fotoTitulo}
+                  onChange={(filename) => setFormData({ ...formData, fotoTitulo: filename })}
+                />
+              </div>
+
               <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-200">
                 <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
                 <Button type="submit">Salvar Eleitor</Button>
@@ -257,12 +355,32 @@ export const ChefeFamiliaDetalhes = () => {
           <Card key={eleitor.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex flex-col h-full justify-between border-l-4 border-l-blue-500">
               <div>
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="font-semibold text-lg text-gray-900">{eleitor.nome}</h3>
-                    <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                      Eleitor da Família
-                    </span>
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 bg-blue-50 border border-blue-200 flex items-center justify-center">
+                      {eleitor.fotoPerfil ? (
+                        <SecureImage
+                          filename={eleitor.fotoPerfil}
+                          alt={eleitor.nome}
+                          className="w-full h-full object-cover"
+                          fallback={
+                            <span className="text-sm font-semibold text-blue-600">
+                              {eleitor.nome.charAt(0).toUpperCase()}
+                            </span>
+                          }
+                        />
+                      ) : (
+                        <span className="text-sm font-semibold text-blue-600">
+                          {eleitor.nome.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-base text-gray-900">{eleitor.nome}</h3>
+                      <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                        Eleitor da Família
+                      </span>
+                    </div>
                   </div>
                   <div className="flex gap-1 bg-gray-100 rounded-full px-2 py-1">
                     <button onClick={() => handleEdit(eleitor)} className="p-1.5 text-gray-500 hover:text-blue-600 rounded-full hover:bg-white transition-colors" title="Editar">
@@ -273,7 +391,8 @@ export const ChefeFamiliaDetalhes = () => {
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-600 mt-3">
+
+                <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-600 mt-3 bg-gray-50/60 p-3 rounded-lg">
                   <div className="col-span-2">
                     <span className="text-gray-400 block text-xs">Título</span>
                     {eleitor.tituloEleitor || 'Não informado'}
@@ -299,6 +418,23 @@ export const ChefeFamiliaDetalhes = () => {
                     </div>
                   )}
                 </div>
+
+                {eleitor.fotoTitulo && (
+                  <div className="mt-3 pt-2 border-t border-gray-100 flex justify-end">
+                    <button
+                      onClick={() => setSelectedTitlePhoto({
+                        isOpen: true,
+                        title: `Título de Eleitor - ${eleitor.nome}`,
+                        filename: eleitor.fotoTitulo,
+                        subtitle: `Título: ${eleitor.tituloEleitor || '-'} | Zona: ${eleitor.zona || '-'} | Seção: ${eleitor.secao || '-'}`
+                      })}
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium py-1 px-2 rounded bg-blue-50 hover:bg-blue-100 transition-colors"
+                    >
+                      <FileText size={14} />
+                      Ver Foto do Título
+                    </button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -311,6 +447,14 @@ export const ChefeFamiliaDetalhes = () => {
           </div>
         )}
       </div>
+
+      <PhotoModal
+        isOpen={selectedTitlePhoto.isOpen}
+        onClose={() => setSelectedTitlePhoto(prev => ({ ...prev, isOpen: false }))}
+        title={selectedTitlePhoto.title}
+        filename={selectedTitlePhoto.filename}
+        subtitle={selectedTitlePhoto.subtitle}
+      />
     </div>
   );
 };

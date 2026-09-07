@@ -1,11 +1,14 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import type { IntegranteResponse, ChefeFamiliaResponse } from '../types';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { Plus, Edit2, Trash2, X, Search, Users, UserCheck, Home, ExternalLink } from 'lucide-react';
+import { SecureImage } from '../components/SecureImage';
+import { ImageUploadInput } from '../components/ImageUploadInput';
+import { PhotoModal } from '../components/PhotoModal';
+import { Plus, Edit2, Trash2, X, Search, Users, UserCheck, Home, ExternalLink, FileText } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
@@ -14,11 +17,39 @@ export const Integrantes = () => {
   const navigate = useNavigate();
   const [integrantes, setIntegrantes] = useState<IntegranteResponse[]>([]);
   const [chefes, setChefes] = useState<ChefeFamiliaResponse[]>([]);
+  const [allChefesCount, setAllChefesCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  const [selectedTitlePhoto, setSelectedTitlePhoto] = useState<{
+    isOpen: boolean;
+    title: string;
+    filename?: string | null;
+    subtitle?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    filename: null,
+    subtitle: '',
+  });
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    id: number;
+    nome: string;
+    tituloEleitor: string;
+    zona: string;
+    secao: string;
+    chefeFamiliaId: number;
+    telefone: string;
+    dataNascimento: string;
+    fotoPerfil: string | null;
+    fotoTitulo: string | null;
+  }>({
     id: 0,
     nome: '',
     tituloEleitor: '',
@@ -26,17 +57,31 @@ export const Integrantes = () => {
     secao: '',
     chefeFamiliaId: 0,
     telefone: '',
-    dataNascimento: ''
+    dataNascimento: '',
+    fotoPerfil: null,
+    fotoTitulo: null,
   });
 
-  const fetchData = async () => {
+  const fetchInitialData = async () => {
     try {
+      setIsLoading(true);
       const [intRes, chefesRes] = await Promise.all([
         api.get('/api/integrantes'),
-        api.get('/api/chefes-familia')
+        api.get('/api/chefes-familia?page=0&size=8')
       ]);
       setIntegrantes(intRes.data);
-      setChefes(chefesRes.data);
+
+      const chefesData = chefesRes.data;
+      if (chefesData && Array.isArray(chefesData.content)) {
+        setChefes(chefesData.content);
+        setAllChefesCount(chefesData.totalElements || chefesData.content.length);
+        setHasMore(!chefesData.last && chefesData.number + 1 < chefesData.totalPages);
+        setPage(0);
+      } else if (Array.isArray(chefesData)) {
+        setChefes(chefesData);
+        setAllChefesCount(chefesData.length);
+        setHasMore(false);
+      }
     } catch (error) {
       console.error('Erro ao buscar dados', error);
       toast.error('Erro ao carregar lista de eleitores.');
@@ -45,11 +90,47 @@ export const Integrantes = () => {
     }
   };
 
+  const loadMoreChefes = async (nextPage: number) => {
+    try {
+      setIsLoadingMore(true);
+      const response = await api.get(`/api/chefes-familia?page=${nextPage}&size=8`);
+      const data = response.data;
+      if (data && Array.isArray(data.content)) {
+        setChefes(prev => [...prev, ...data.content]);
+        setHasMore(!data.last && data.number + 1 < data.totalPages);
+        setPage(nextPage);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar mais chefes', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
-    fetchData();
+    fetchInitialData();
   }, []);
 
-  const totalChefes = chefes.length;
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore && !searchTerm) {
+          loadMoreChefes(page + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, isLoadingMore, page, searchTerm]);
+
+  const totalChefes = allChefesCount || chefes.length;
   const totalIntegrantes = integrantes.length;
   const totalEleitores = totalChefes + totalIntegrantes;
 
@@ -125,7 +206,9 @@ export const Integrantes = () => {
         zona: formData.zona.trim() || null,
         secao: formData.secao.trim() || null,
         telefone: formData.telefone.trim() || null,
-        dataNascimento: dateApi && dateApi.length === 10 ? dateApi : null
+        dataNascimento: dateApi && dateApi.length === 10 ? dateApi : null,
+        fotoPerfil: formData.fotoPerfil || null,
+        fotoTitulo: formData.fotoTitulo || null,
       };
 
       if (formData.id) {
@@ -136,7 +219,7 @@ export const Integrantes = () => {
       setIsFormOpen(false);
       resetForm();
       toast.success('Eleitor salvo com sucesso!');
-      fetchData();
+      fetchInitialData();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Erro ao salvar eleitor');
     }
@@ -151,7 +234,9 @@ export const Integrantes = () => {
       secao: '',
       chefeFamiliaId: defaultChefeId || (chefes.length > 0 ? chefes[0].id : 0),
       telefone: '',
-      dataNascimento: ''
+      dataNascimento: '',
+      fotoPerfil: null,
+      fotoTitulo: null,
     });
 
   const handleOpenAddModal = (defaultChefeId?: number) => {
@@ -168,7 +253,9 @@ export const Integrantes = () => {
       secao: integrante.secao || '',
       chefeFamiliaId: integrante.chefeFamiliaId,
       telefone: integrante.telefone || '',
-      dataNascimento: parseDateFromApi(integrante.dataNascimento || '')
+      dataNascimento: parseDateFromApi(integrante.dataNascimento || ''),
+      fotoPerfil: integrante.fotoPerfil || null,
+      fotoTitulo: integrante.fotoTitulo || null,
     });
     setIsFormOpen(true);
   };
@@ -179,7 +266,7 @@ export const Integrantes = () => {
       try {
         await api.delete(`/api/integrantes/${id}`);
         toast.success('Eleitor excluído com sucesso.');
-        fetchData();
+        fetchInitialData();
       } catch (error) {
         toast.error('Erro ao excluir eleitor.');
       }
@@ -266,7 +353,7 @@ export const Integrantes = () => {
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="text-lg font-semibold">{formData.id ? 'Editar Eleitor' : 'Novo Eleitor'}</h2>
-                <p className="text-xs text-gray-500">Apenas o nome e a família são obrigatórios. Os demais dados são opcionais.</p>
+                <p className="text-xs text-gray-500">Apenas o nome e a família são obrigatórios. Os demais dados e fotos são opcionais.</p>
               </div>
               <button onClick={() => setIsFormOpen(false)} className="text-gray-500 hover:text-gray-700">
                 <X size={20} />
@@ -334,6 +421,21 @@ export const Integrantes = () => {
                 value={formData.dataNascimento}
                 onChange={(e) => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })}
               />
+
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+                <ImageUploadInput
+                  label="Foto de Perfil do Eleitor"
+                  tipo="perfil"
+                  value={formData.fotoPerfil}
+                  onChange={(filename) => setFormData({ ...formData, fotoPerfil: filename })}
+                />
+                <ImageUploadInput
+                  label="Foto do Título de Eleitor"
+                  tipo="titulo"
+                  value={formData.fotoTitulo}
+                  onChange={(filename) => setFormData({ ...formData, fotoTitulo: filename })}
+                />
+              </div>
 
               <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-200">
                 <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>
@@ -405,16 +507,53 @@ export const Integrantes = () => {
                     <span>1º Eleitor da Família (Chefe)</span>
                   </div>
                   <div className="bg-emerald-50/40 border-2 border-emerald-500/40 rounded-xl p-4 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg text-gray-900">{chefe.nome}</span>
-                        <span className="bg-emerald-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                          Chefe de Família
-                        </span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 bg-emerald-100 border-2 border-emerald-500/30 flex items-center justify-center">
+                          {chefe.fotoPerfil ? (
+                            <SecureImage
+                              filename={chefe.fotoPerfil}
+                              alt={chefe.nome}
+                              className="w-full h-full object-cover"
+                              fallback={
+                                <div className="flex items-center justify-center w-full h-full text-emerald-700 font-bold">
+                                  <UserCheck size={22} />
+                                </div>
+                              }
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center w-full h-full text-emerald-700 font-bold">
+                              <UserCheck size={22} />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-lg text-gray-900">{chefe.nome}</span>
+                            <span className="bg-emerald-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                              Chefe de Família
+                            </span>
+                          </div>
+                          {chefe.endereco && (
+                            <span className="text-xs text-gray-500 block">Endereço: {chefe.endereco}</span>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-xs text-gray-500">
-                        {chefe.endereco ? `Endereço: ${chefe.endereco}` : ''}
-                      </span>
+
+                      {chefe.fotoTitulo && (
+                        <button
+                          onClick={() => setSelectedTitlePhoto({
+                            isOpen: true,
+                            title: `Título de Eleitor - ${chefe.nome}`,
+                            filename: chefe.fotoTitulo,
+                            subtitle: `Título: ${chefe.tituloEleitor || '-'} | Zona: ${chefe.zona || '-'} | Seção: ${chefe.secao || '-'}`
+                          })}
+                          className="inline-flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 font-medium py-1.5 px-3 rounded-lg transition-colors self-start sm:self-auto"
+                        >
+                          <FileText size={15} />
+                          Ver Foto do Título
+                        </button>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm text-gray-700 bg-white/70 p-3 rounded-lg border border-emerald-200/50">
@@ -462,11 +601,31 @@ export const Integrantes = () => {
                           <CardContent className="p-3.5 flex flex-col justify-between h-full">
                             <div>
                               <div className="flex justify-between items-start gap-2 mb-2">
-                                <div>
-                                  <h3 className="font-semibold text-base text-gray-900">{integrante.nome}</h3>
-                                  <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                                    Eleitor / Familiar
-                                  </span>
+                                <div className="flex items-center gap-2.5">
+                                  <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 bg-blue-50 border border-blue-200 flex items-center justify-center">
+                                    {integrante.fotoPerfil ? (
+                                      <SecureImage
+                                        filename={integrante.fotoPerfil}
+                                        alt={integrante.nome}
+                                        className="w-full h-full object-cover"
+                                        fallback={
+                                          <span className="text-xs font-semibold text-blue-600">
+                                            {integrante.nome.charAt(0).toUpperCase()}
+                                          </span>
+                                        }
+                                      />
+                                    ) : (
+                                      <span className="text-xs font-semibold text-blue-600">
+                                        {integrante.nome.charAt(0).toUpperCase()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <h3 className="font-semibold text-base text-gray-900">{integrante.nome}</h3>
+                                    <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                      Eleitor / Familiar
+                                    </span>
+                                  </div>
                                 </div>
                                 <div className="flex gap-1 bg-gray-100 rounded-full px-1.5 py-0.5">
                                   <button
@@ -512,6 +671,23 @@ export const Integrantes = () => {
                                   </div>
                                 )}
                               </div>
+
+                              {integrante.fotoTitulo && (
+                                <div className="mt-2.5 pt-2 border-t border-gray-100 flex justify-end">
+                                  <button
+                                    onClick={() => setSelectedTitlePhoto({
+                                      isOpen: true,
+                                      title: `Título de Eleitor - ${integrante.nome}`,
+                                      filename: integrante.fotoTitulo,
+                                      subtitle: `Título: ${integrante.tituloEleitor || '-'} | Zona: ${integrante.zona || '-'} | Seção: ${integrante.secao || '-'}`
+                                    })}
+                                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium py-1 px-2 rounded bg-blue-50 hover:bg-blue-100 transition-colors"
+                                  >
+                                    <FileText size={14} />
+                                    Ver Foto do Título
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
@@ -537,6 +713,19 @@ export const Integrantes = () => {
             </div>
           ))}
 
+          {/* Sentinel for Infinite Scroll of Families */}
+          <div ref={observerTarget} className="py-4 flex justify-center w-full">
+            {isLoadingMore && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                Carregando mais famílias...
+              </div>
+            )}
+            {!hasMore && chefes.length > 0 && !isLoading && (
+              <span className="text-xs text-gray-400">Todas as famílias foram carregadas</span>
+            )}
+          </div>
+
           {/* Orphan Integrantes (se houver algum eleitor sem chefe cadastrado) */}
           {orphanIntegrantes.length > 0 && (
             <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-5 space-y-4">
@@ -552,7 +741,27 @@ export const Integrantes = () => {
                     <CardContent className="p-3.5 flex flex-col justify-between h-full">
                       <div>
                         <div className="flex justify-between items-start gap-2 mb-2">
-                          <h3 className="font-semibold text-base text-gray-900">{integrante.nome}</h3>
+                          <div className="flex items-center gap-2.5">
+                            <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 bg-amber-50 border border-amber-200 flex items-center justify-center">
+                              {integrante.fotoPerfil ? (
+                                <SecureImage
+                                  filename={integrante.fotoPerfil}
+                                  alt={integrante.nome}
+                                  className="w-full h-full object-cover"
+                                  fallback={
+                                    <span className="text-xs font-semibold text-amber-700">
+                                      {integrante.nome.charAt(0).toUpperCase()}
+                                    </span>
+                                  }
+                                />
+                              ) : (
+                                <span className="text-xs font-semibold text-amber-700">
+                                  {integrante.nome.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="font-semibold text-base text-gray-900">{integrante.nome}</h3>
+                          </div>
                           <div className="flex gap-1 bg-gray-100 rounded-full px-1.5 py-0.5">
                             <button
                               onClick={() => handleEdit(integrante)}
@@ -590,6 +799,23 @@ export const Integrantes = () => {
                             </div>
                           )}
                         </div>
+
+                        {integrante.fotoTitulo && (
+                          <div className="mt-2.5 pt-2 border-t border-gray-100 flex justify-end">
+                            <button
+                              onClick={() => setSelectedTitlePhoto({
+                                isOpen: true,
+                                title: `Título de Eleitor - ${integrante.nome}`,
+                                filename: integrante.fotoTitulo,
+                                subtitle: `Título: ${integrante.tituloEleitor || '-'} | Zona: ${integrante.zona || '-'} | Seção: ${integrante.secao || '-'}`
+                              })}
+                              className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium py-1 px-2 rounded bg-amber-50 hover:bg-amber-100 transition-colors"
+                            >
+                              <FileText size={14} />
+                              Ver Foto do Título
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -609,6 +835,15 @@ export const Integrantes = () => {
           )}
         </div>
       )}
+
+      {/* Title Photo Modal */}
+      <PhotoModal
+        isOpen={selectedTitlePhoto.isOpen}
+        onClose={() => setSelectedTitlePhoto(prev => ({ ...prev, isOpen: false }))}
+        title={selectedTitlePhoto.title}
+        filename={selectedTitlePhoto.filename}
+        subtitle={selectedTitlePhoto.subtitle}
+      />
     </div>
   );
 };
