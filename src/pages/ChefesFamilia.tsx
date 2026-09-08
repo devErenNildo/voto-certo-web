@@ -8,7 +8,8 @@ import { Input } from '../components/Input';
 import { SecureImage } from '../components/SecureImage';
 import { ImageUploadInput } from '../components/ImageUploadInput';
 import { DocumentScannerBanner } from '../components/DocumentScannerBanner';
-import { Plus, Edit2, Trash2, X, Search, UserCheck } from 'lucide-react';
+import { Modal } from '../components/Modal';
+import { Plus, Edit2, Trash2, Search, UserCheck } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskCPF, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
@@ -226,123 +227,118 @@ export const ChefesFamilia = () => {
         </div>
       )}
 
-      {isFormOpen && (
-        <Card className="bg-gray-50 border-gray-200">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">{formData.id ? 'Editar Chefe' : 'Novo Chefe'}</h2>
-              <button onClick={handleCloseForm} className="text-gray-500 hover:text-gray-700">
-                <X size={20} />
-              </button>
-            </div>
+      <Modal
+        isOpen={isFormOpen}
+        onClose={handleCloseForm}
+        title={formData.id ? 'Editar Chefe de Família' : 'Novo Chefe de Família'}
+        subtitle="Preencha os dados do chefe. O chefe também é contabilizado como eleitor."
+        maxWidth="2xl"
+      >
+        <div className="mb-4">
+          <DocumentScannerBanner
+            onDataExtracted={(extracted) => {
+              setFormData((prev) => {
+                if (!prev.id && prev.fotoTitulo && extracted.fotoTitulo && prev.fotoTitulo !== extracted.fotoTitulo) {
+                  api.delete(`/api/imagens/${prev.fotoTitulo}`).catch(console.warn);
+                }
+                return {
+                  ...prev,
+                  nome: extracted.nome || prev.nome,
+                  tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
+                  zona: extracted.zona || prev.zona,
+                  secao: extracted.secao || prev.secao,
+                  dataNascimento: extracted.dataNascimento || prev.dataNascimento,
+                  fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
+                };
+              });
+            }}
+          />
+        </div>
 
-            <div className="mb-4">
-              <DocumentScannerBanner
-                onDataExtracted={(extracted) => {
-                  setFormData((prev) => {
-                    if (!prev.id && prev.fotoTitulo && extracted.fotoTitulo && prev.fotoTitulo !== extracted.fotoTitulo) {
-                      api.delete(`/api/imagens/${prev.fotoTitulo}`).catch(console.warn);
-                    }
-                    return {
-                      ...prev,
-                      nome: extracted.nome || prev.nome,
-                      tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
-                      zona: extracted.zona || prev.zona,
-                      secao: extracted.secao || prev.secao,
-                      dataNascimento: extracted.dataNascimento || prev.dataNascimento,
-                      fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
-                    };
-                  });
-                }}
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input 
+            label="Nome Completo *" 
+            required 
+            placeholder="Ex: João da Silva" 
+            value={formData.nome} 
+            onChange={e => setFormData({ ...formData, nome: e.target.value })} 
+            className="md:col-span-2" 
+          />
+          
+          <Input 
+            label="CPF (opcional)" 
+            inputMode="numeric" 
+            placeholder="000.000.000-00" 
+            value={formData.cpf} 
+            onChange={e => setFormData({ ...formData, cpf: maskCPF(e.target.value) })} 
+          />
+          <Input 
+            label="Telefone (opcional)" 
+            inputMode="numeric" 
+            placeholder="(00) 00000-0000" 
+            value={formData.telefone} 
+            onChange={e => setFormData({ ...formData, telefone: maskPhone(e.target.value) })} 
+          />
+          
+          <Input 
+            type="text" 
+            inputMode="numeric" 
+            placeholder="dd/mm/aaaa" 
+            label="Data de Nascimento (opcional)" 
+            value={formData.dataNascimento} 
+            onChange={e => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })} 
+          />
+          <Input 
+            label="Título de Eleitor (opcional)" 
+            placeholder="Número do título" 
+            value={formData.tituloEleitor} 
+            onChange={e => setFormData({ ...formData, tituloEleitor: e.target.value })} 
+          />
+          
+          <div className="grid grid-cols-2 gap-2 md:col-span-2">
+            <Input 
+              label="Zona (opcional)" 
+              placeholder="Zona" 
+              value={formData.zona} 
+              onChange={e => setFormData({ ...formData, zona: e.target.value })} 
+            />
+            <Input 
+              label="Seção (opcional)" 
+              placeholder="Seção" 
+              value={formData.secao} 
+              onChange={e => setFormData({ ...formData, secao: e.target.value })} 
+            />
+          </div>
+          
+          <Input 
+            label="Endereço Completo (opcional)" 
+            placeholder="Rua, número, bairro..." 
+            value={formData.endereco} 
+            onChange={e => setFormData({ ...formData, endereco: e.target.value })} 
+            className="md:col-span-2" 
+          />
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input 
-                label="Nome Completo *" 
-                required 
-                placeholder="Ex: João da Silva" 
-                value={formData.nome} 
-                onChange={e => setFormData({ ...formData, nome: e.target.value })} 
-                className="md:col-span-2" 
-              />
-              
-              <Input 
-                label="CPF (opcional)" 
-                inputMode="numeric" 
-                placeholder="000.000.000-00" 
-                value={formData.cpf} 
-                onChange={e => setFormData({ ...formData, cpf: maskCPF(e.target.value) })} 
-              />
-              <Input 
-                label="Telefone (opcional)" 
-                inputMode="numeric" 
-                placeholder="(00) 00000-0000" 
-                value={formData.telefone} 
-                onChange={e => setFormData({ ...formData, telefone: maskPhone(e.target.value) })} 
-              />
-              
-              <Input 
-                type="text" 
-                inputMode="numeric" 
-                placeholder="dd/mm/aaaa" 
-                label="Data de Nascimento (opcional)" 
-                value={formData.dataNascimento} 
-                onChange={e => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })} 
-              />
-              <Input 
-                label="Título de Eleitor (opcional)" 
-                placeholder="Número do título" 
-                value={formData.tituloEleitor} 
-                onChange={e => setFormData({ ...formData, tituloEleitor: e.target.value })} 
-              />
-              
-              <div className="grid grid-cols-2 gap-2 md:col-span-2">
-                <Input 
-                  label="Zona (opcional)" 
-                  placeholder="Zona" 
-                  value={formData.zona} 
-                  onChange={e => setFormData({ ...formData, zona: e.target.value })} 
-                />
-                <Input 
-                  label="Seção (opcional)" 
-                  placeholder="Seção" 
-                  value={formData.secao} 
-                  onChange={e => setFormData({ ...formData, secao: e.target.value })} 
-                />
-              </div>
-              
-              <Input 
-                label="Endereço Completo (opcional)" 
-                placeholder="Rua, número, bairro..." 
-                value={formData.endereco} 
-                onChange={e => setFormData({ ...formData, endereco: e.target.value })} 
-                className="md:col-span-2" 
-              />
+          <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+            <ImageUploadInput
+              label="Foto de Perfil (Opcional)"
+              tipo="perfil"
+              value={formData.fotoPerfil}
+              onChange={(filename) => setFormData({ ...formData, fotoPerfil: filename })}
+            />
+            <ImageUploadInput
+              label="Foto do Título de Eleitor (Opcional)"
+              tipo="titulo"
+              value={formData.fotoTitulo}
+              onChange={(filename) => setFormData({ ...formData, fotoTitulo: filename })}
+            />
+          </div>
 
-              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
-                <ImageUploadInput
-                  label="Foto de Perfil (Opcional)"
-                  tipo="perfil"
-                  value={formData.fotoPerfil}
-                  onChange={(filename) => setFormData({ ...formData, fotoPerfil: filename })}
-                />
-                <ImageUploadInput
-                  label="Foto do Título de Eleitor (Opcional)"
-                  tipo="titulo"
-                  value={formData.fotoTitulo}
-                  onChange={(filename) => setFormData({ ...formData, fotoTitulo: filename })}
-                />
-              </div>
-
-              <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-200">
-                <Button type="button" variant="ghost" onClick={handleCloseForm}>Cancelar</Button>
-                <Button type="submit">Salvar Chefe</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+          <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={handleCloseForm}>Cancelar</Button>
+            <Button type="submit">Salvar Chefe</Button>
+          </div>
+        </form>
+      </Modal>
 
       {isLoading ? (
         <div className="flex justify-center py-8">

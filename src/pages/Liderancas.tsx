@@ -4,7 +4,8 @@ import type { LiderancaResponse } from '../types';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Modal } from '../components/Modal';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
@@ -93,59 +94,63 @@ export const Liderancas = () => {
         </Button>
       </div>
 
-      {isFormOpen && (
-        <Card className="bg-gray-50 border-gray-200">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">{formData.id ? 'Editar Liderança' : 'Nova Liderança'}</h2>
-              <button onClick={() => setIsFormOpen(false)} className="text-gray-500 hover:text-gray-700">
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                label="Nome"
-                value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-              />
-              <Input
-                label="Usuário (Login)"
-                value={formData.username}
-                onChange={e => setFormData({ ...formData, username: e.target.value })}
-              />
-              <Input
-                label={formData.id ? "Nova Senha (opcional)" : "Senha"}
-                type="password"
-                value={formData.password}
-                onChange={e => setFormData({ ...formData, password: e.target.value })}
-              />
-              <Input
-                label="Telefone"
-                inputMode="numeric"
-                value={formData.telefone}
-                onChange={e => setFormData({ ...formData, telefone: maskPhone(e.target.value) })}
-              />
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="dd/mm/aaaa"
-                label="Data de Nascimento"
-                value={formData.dataNascimento}
-                onChange={e => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })}
-              />
-              <Input
-                label="Bairro"
-                value={formData.bairro}
-                onChange={e => setFormData({ ...formData, bairro: e.target.value })}
-              />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
-                <Button type="submit">Salvar</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+      <Modal
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        title={formData.id ? 'Editar Liderança' : 'Nova Liderança'}
+        subtitle={formData.id ? 'Atualize as informações de acesso e contato da liderança' : 'Preencha os dados abaixo para cadastrar uma nova liderança na campanha'}
+        maxWidth="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Nome Completo *"
+            required
+            placeholder="Ex: Carlos Eduardo"
+            value={formData.name}
+            onChange={e => setFormData({ ...formData, name: e.target.value })}
+          />
+          <Input
+            label="Usuário (Login de Acesso) *"
+            required
+            placeholder="Ex: carloseduardo"
+            value={formData.username}
+            onChange={e => setFormData({ ...formData, username: e.target.value })}
+          />
+          <Input
+            label={formData.id ? "Nova Senha (opcional)" : "Senha de Acesso *"}
+            type="password"
+            required={!formData.id}
+            placeholder={formData.id ? "Deixe em branco para manter a senha atual" : "Digite uma senha segura"}
+            value={formData.password}
+            onChange={e => setFormData({ ...formData, password: e.target.value })}
+          />
+          <Input
+            label="Telefone (opcional)"
+            inputMode="numeric"
+            placeholder="(00) 00000-0000"
+            value={formData.telefone}
+            onChange={e => setFormData({ ...formData, telefone: maskPhone(e.target.value) })}
+          />
+          <Input
+            type="text"
+            inputMode="numeric"
+            placeholder="dd/mm/aaaa"
+            label="Data de Nascimento (opcional)"
+            value={formData.dataNascimento}
+            onChange={e => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })}
+          />
+          <Input
+            label="Bairro (opcional)"
+            placeholder="Ex: Centro"
+            value={formData.bairro}
+            onChange={e => setFormData({ ...formData, bairro: e.target.value })}
+          />
+          <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
+            <Button type="submit">Salvar Liderança</Button>
+          </div>
+        </form>
+      </Modal>
 
       {isLoading ? (
         <div className="flex justify-center py-8">

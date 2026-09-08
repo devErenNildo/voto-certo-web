@@ -8,8 +8,9 @@ import { Input } from '../components/Input';
 import { SecureImage } from '../components/SecureImage';
 import { ImageUploadInput } from '../components/ImageUploadInput';
 import { PhotoModal } from '../components/PhotoModal';
+import { Modal } from '../components/Modal';
 import { DocumentScannerBanner } from '../components/DocumentScannerBanner';
-import { Plus, Edit2, Trash2, X, Search, Users, UserCheck, Home, ExternalLink, FileText } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Users, UserCheck, Home, ExternalLink, FileText } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
@@ -361,128 +362,120 @@ export const Integrantes = () => {
       )}
 
       {/* Modal / Form */}
-      {isFormOpen && (
-        <Card className="bg-gray-50 border-gray-200">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-lg font-semibold">{formData.id ? 'Editar Eleitor' : 'Novo Eleitor'}</h2>
-                <p className="text-xs text-gray-500">Apenas o nome e a família são obrigatórios. Os demais dados e fotos são opcionais.</p>
-              </div>
-              <button onClick={handleCloseForm} className="text-gray-500 hover:text-gray-700">
-                <X size={20} />
-              </button>
-            </div>
+      <Modal
+        isOpen={isFormOpen}
+        onClose={handleCloseForm}
+        title={formData.id ? 'Editar Eleitor' : 'Novo Eleitor'}
+        subtitle="Apenas o nome e a família são obrigatórios. Os demais dados e fotos são opcionais."
+        maxWidth="2xl"
+      >
+        <div className="mb-4">
+          <DocumentScannerBanner
+            onDataExtracted={(extracted) => {
+              setFormData((prev) => {
+                if (!prev.id && prev.fotoTitulo && extracted.fotoTitulo && prev.fotoTitulo !== extracted.fotoTitulo) {
+                  api.delete(`/api/imagens/${prev.fotoTitulo}`).catch(console.warn);
+                }
+                return {
+                  ...prev,
+                  nome: extracted.nome || prev.nome,
+                  tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
+                  zona: extracted.zona || prev.zona,
+                  secao: extracted.secao || prev.secao,
+                  dataNascimento: extracted.dataNascimento || prev.dataNascimento,
+                  fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
+                };
+              });
+            }}
+          />
+        </div>
 
-            <div className="mb-4">
-              <DocumentScannerBanner
-                onDataExtracted={(extracted) => {
-                  setFormData((prev) => {
-                    if (!prev.id && prev.fotoTitulo && extracted.fotoTitulo && prev.fotoTitulo !== extracted.fotoTitulo) {
-                      api.delete(`/api/imagens/${prev.fotoTitulo}`).catch(console.warn);
-                    }
-                    return {
-                      ...prev,
-                      nome: extracted.nome || prev.nome,
-                      tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
-                      zona: extracted.zona || prev.zona,
-                      secao: extracted.secao || prev.secao,
-                      dataNascimento: extracted.dataNascimento || prev.dataNascimento,
-                      fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
-                    };
-                  });
-                }}
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Chefe de Família *</label>
+            <select
+              className="flex h-12 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              value={formData.chefeFamiliaId}
+              onChange={(e) => setFormData({ ...formData, chefeFamiliaId: Number(e.target.value) })}
+              required
+            >
+              <option value={0}>Selecione um chefe de família</option>
+              {chefes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome} (Liderança: {c.liderancaNome})
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Chefe de Família *</label>
-                <select
-                  className="flex h-12 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  value={formData.chefeFamiliaId}
-                  onChange={(e) => setFormData({ ...formData, chefeFamiliaId: Number(e.target.value) })}
-                  required
-                >
-                  <option value={0}>Selecione um chefe de família</option>
-                  {chefes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nome} (Liderança: {c.liderancaNome})
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <Input
+            label="Nome Completo *"
+            required
+            placeholder="Ex: Carlos de Oliveira"
+            value={formData.nome}
+            onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+            className="md:col-span-2"
+          />
+          <Input
+            label="Título de Eleitor (opcional)"
+            placeholder="Número do título"
+            value={formData.tituloEleitor}
+            onChange={(e) => setFormData({ ...formData, tituloEleitor: e.target.value })}
+            className="md:col-span-2"
+          />
 
-              <Input
-                label="Nome Completo *"
-                required
-                placeholder="Ex: Carlos de Oliveira"
-                value={formData.nome}
-                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                className="md:col-span-2"
-              />
-              <Input
-                label="Título de Eleitor (opcional)"
-                placeholder="Número do título"
-                value={formData.tituloEleitor}
-                onChange={(e) => setFormData({ ...formData, tituloEleitor: e.target.value })}
-                className="md:col-span-2"
-              />
+          <Input
+            label="Zona (opcional)"
+            placeholder="Zona"
+            value={formData.zona}
+            onChange={(e) => setFormData({ ...formData, zona: e.target.value })}
+          />
+          <Input
+            label="Seção (opcional)"
+            placeholder="Seção"
+            value={formData.secao}
+            onChange={(e) => setFormData({ ...formData, secao: e.target.value })}
+          />
 
-              <Input
-                label="Zona (opcional)"
-                placeholder="Zona"
-                value={formData.zona}
-                onChange={(e) => setFormData({ ...formData, zona: e.target.value })}
-              />
-              <Input
-                label="Seção (opcional)"
-                placeholder="Seção"
-                value={formData.secao}
-                onChange={(e) => setFormData({ ...formData, secao: e.target.value })}
-              />
+          <Input
+            label="Telefone (opcional)"
+            inputMode="numeric"
+            placeholder="(00) 00000-0000"
+            value={formData.telefone}
+            onChange={(e) => setFormData({ ...formData, telefone: maskPhone(e.target.value) })}
+          />
+          <Input
+            type="text"
+            inputMode="numeric"
+            placeholder="dd/mm/aaaa"
+            label="Data de Nascimento (opcional)"
+            value={formData.dataNascimento}
+            onChange={(e) => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })}
+          />
 
-              <Input
-                label="Telefone (opcional)"
-                inputMode="numeric"
-                placeholder="(00) 00000-0000"
-                value={formData.telefone}
-                onChange={(e) => setFormData({ ...formData, telefone: maskPhone(e.target.value) })}
-              />
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="dd/mm/aaaa"
-                label="Data de Nascimento (opcional)"
-                value={formData.dataNascimento}
-                onChange={(e) => setFormData({ ...formData, dataNascimento: maskDate(e.target.value) })}
-              />
+          <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+            <ImageUploadInput
+              label="Foto de Perfil do Eleitor"
+              tipo="perfil"
+              value={formData.fotoPerfil}
+              onChange={(filename) => setFormData({ ...formData, fotoPerfil: filename })}
+            />
+            <ImageUploadInput
+              label="Foto do Título de Eleitor"
+              tipo="titulo"
+              value={formData.fotoTitulo}
+              onChange={(filename) => setFormData({ ...formData, fotoTitulo: filename })}
+            />
+          </div>
 
-              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-200">
-                <ImageUploadInput
-                  label="Foto de Perfil do Eleitor"
-                  tipo="perfil"
-                  value={formData.fotoPerfil}
-                  onChange={(filename) => setFormData({ ...formData, fotoPerfil: filename })}
-                />
-                <ImageUploadInput
-                  label="Foto do Título de Eleitor"
-                  tipo="titulo"
-                  value={formData.fotoTitulo}
-                  onChange={(filename) => setFormData({ ...formData, fotoTitulo: filename })}
-                />
-              </div>
-
-              <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-200">
-                <Button type="button" variant="ghost" onClick={handleCloseForm}>
-                  Cancelar
-                </Button>
-                <Button type="submit">Salvar Eleitor</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+          <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-100">
+            <Button type="button" variant="ghost" onClick={handleCloseForm}>
+              Cancelar
+            </Button>
+            <Button type="submit">Salvar Eleitor</Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Loading State */}
       {isLoading ? (
