@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import type { ChefeFamiliaResponse, IntegranteResponse } from '../types';
+import type { ChefeFamiliaResponse, IntegranteResponse, TituloExtracaoResponse } from '../types';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -10,7 +10,9 @@ import { ImageUploadInput } from '../components/ImageUploadInput';
 import { PhotoModal } from '../components/PhotoModal';
 import { Modal } from '../components/Modal';
 import { DocumentScannerBanner } from '../components/DocumentScannerBanner';
-import { ArrowLeft, Plus, Edit2, Trash2, Users, UserCheck, FileText } from 'lucide-react';
+import { DocumentGalleryModal } from '../components/DocumentGalleryModal';
+import { BatchVotersResultModal } from '../components/BatchVotersResultModal';
+import { ArrowLeft, Plus, Edit2, Trash2, Users, UserCheck, FileText, Files } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
@@ -32,6 +34,15 @@ export const ChefeFamiliaDetalhes = () => {
     title: '',
     filename: null,
     subtitle: '',
+  });
+
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [batchModal, setBatchModal] = useState<{
+    isOpen: boolean;
+    result: TituloExtracaoResponse | null;
+  }>({
+    isOpen: false,
+    result: null
   });
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -236,22 +247,35 @@ export const ChefeFamiliaDetalhes = () => {
               </div>
             </div>
 
-            {chefe.fotoTitulo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedTitlePhoto({
-                  isOpen: true,
-                  title: `Título de Eleitor - ${chefe.nome}`,
-                  filename: chefe.fotoTitulo,
-                  subtitle: `Título: ${chefe.tituloEleitor || '-'} | Zona: ${chefe.zona || '-'} | Seção: ${chefe.secao || '-'}`
-                })}
-                className="text-primary hover:bg-primary/10 self-start sm:self-auto"
-              >
-                <FileText size={16} className="mr-1.5" />
-                Ver Foto do Título
-              </Button>
-            )}
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              {chefe.fotoTitulo && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedTitlePhoto({
+                    isOpen: true,
+                    title: `Título de Eleitor - ${chefe.nome}`,
+                    filename: chefe.fotoTitulo,
+                    subtitle: `Título: ${chefe.tituloEleitor || '-'} | Zona: ${chefe.zona || '-'} | Seção: ${chefe.secao || '-'}`
+                  })}
+                  className="text-primary hover:bg-primary/10"
+                >
+                  <FileText size={16} className="mr-1.5" />
+                  Ver Foto do Título
+                </Button>
+              )}
+              {chefe.documentos && chefe.documentos.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsGalleryOpen(true)}
+                  className="text-indigo-600 hover:bg-indigo-50"
+                >
+                  <Files size={16} className="mr-1.5" />
+                  Ver Documentos ({chefe.documentos.length})
+                </Button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm bg-gray-50/70 p-4 rounded-lg">
             <div><span className="block text-gray-500 text-xs uppercase font-medium">CPF</span>{chefe.cpf || 'Não informado'}</div>
@@ -291,9 +315,20 @@ export const ChefeFamiliaDetalhes = () => {
       >
         <div className="mb-4">
           <DocumentScannerBanner
+            chefeFamiliaId={Number(id)}
+            onBatchSaved={(batchData) => {
+              setIsFormOpen(false);
+              resetForm();
+              setBatchModal({
+                isOpen: true,
+                result: batchData
+              });
+              fetchData();
+            }}
             onDataExtracted={(extracted) => {
               setFormData((prev) => {
-                if (!prev.id && prev.fotoTitulo && extracted.fotoTitulo && prev.fotoTitulo !== extracted.fotoTitulo) {
+                const fotoParaUsar = extracted.fotoTitulo || extracted.fotoDocumento || prev.fotoTitulo;
+                if (!prev.id && prev.fotoTitulo && fotoParaUsar && prev.fotoTitulo !== fotoParaUsar) {
                   api.delete(`/api/imagens/${prev.fotoTitulo}`).catch(console.warn);
                 }
                 return {
@@ -302,8 +337,9 @@ export const ChefeFamiliaDetalhes = () => {
                   tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
                   zona: extracted.zona || prev.zona,
                   secao: extracted.secao || prev.secao,
+                  telefone: extracted.telefone ? maskPhone(extracted.telefone) : prev.telefone,
                   dataNascimento: extracted.dataNascimento || prev.dataNascimento,
-                  fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
+                  fotoTitulo: fotoParaUsar,
                 };
               });
             }}
@@ -483,6 +519,22 @@ export const ChefeFamiliaDetalhes = () => {
         title={selectedTitlePhoto.title}
         filename={selectedTitlePhoto.filename}
         subtitle={selectedTitlePhoto.subtitle}
+      />
+
+      {/* Modal de Galeria com Todos os Documentos do Chefe */}
+      <DocumentGalleryModal
+        isOpen={isGalleryOpen}
+        onClose={() => setIsGalleryOpen(false)}
+        title={`Documentos da Família de ${chefe.nome}`}
+        documentos={chefe.documentos || []}
+      />
+
+      {/* Modal de Alerta de Eleitores Salvos Automaticamente pela IA */}
+      <BatchVotersResultModal
+        isOpen={batchModal.isOpen}
+        onClose={() => setBatchModal({ isOpen: false, result: null })}
+        result={batchModal.result}
+        chefeNome={chefe.nome}
       />
     </div>
   );

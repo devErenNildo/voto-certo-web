@@ -36,6 +36,7 @@ export interface ChefeFamiliaResponse {
   endereco: string;
   fotoPerfil?: string | null;
   fotoTitulo?: string | null;
+  documentos?: string[];
   liderancaId: number;
   liderancaNome: string;
   totalIntegrantes: number;
@@ -79,12 +80,20 @@ export interface PageResponse<T> {
 }
 
 export interface TituloExtracaoResponse {
+  tipoDocumento?: 'TITULO_INDIVIDUAL' | 'DOCUMENTO_INDIVIDUAL' | 'LISTA';
+  multiplos?: boolean;
   nome?: string | null;
   tituloEleitor?: string | null;
   zona?: string | null;
   secao?: string | null;
+  telefone?: string | null;
   dataNascimento?: string | null;
   fotoTitulo?: string | null;
+  fotoDocumento?: string | null;
+  totalIdentificados?: number;
+  totalSalvos?: number;
+  documentoSalvoEmChefe?: string;
+  eleitoresSalvos?: IntegranteResponse[];
   mensagem?: string;
   sucesso: boolean;
 }

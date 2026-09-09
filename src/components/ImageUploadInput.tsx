@@ -26,9 +26,9 @@ export const ImageUploadInput = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validação de tamanho (máximo 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('O arquivo é muito grande. O tamanho máximo permitido é 10MB.');
+    // Validação de tamanho (máximo 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('O arquivo é muito grande. O tamanho máximo permitido é 50MB.');
       return;
     }
 

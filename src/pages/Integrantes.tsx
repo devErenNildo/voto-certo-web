@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import type { IntegranteResponse, ChefeFamiliaResponse } from '../types';
+import type { IntegranteResponse, ChefeFamiliaResponse, TituloExtracaoResponse } from '../types';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -10,7 +10,9 @@ import { ImageUploadInput } from '../components/ImageUploadInput';
 import { PhotoModal } from '../components/PhotoModal';
 import { Modal } from '../components/Modal';
 import { DocumentScannerBanner } from '../components/DocumentScannerBanner';
-import { Plus, Edit2, Trash2, Search, Users, UserCheck, Home, ExternalLink, FileText } from 'lucide-react';
+import { DocumentGalleryModal } from '../components/DocumentGalleryModal';
+import { BatchVotersResultModal } from '../components/BatchVotersResultModal';
+import { Plus, Edit2, Trash2, Search, Users, UserCheck, Home, ExternalLink, FileText, Files } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
@@ -37,6 +39,26 @@ export const Integrantes = () => {
     title: '',
     filename: null,
     subtitle: '',
+  });
+
+  const [galleryModal, setGalleryModal] = useState<{
+    isOpen: boolean;
+    chefeNome: string;
+    documentos: string[];
+  }>({
+    isOpen: false,
+    chefeNome: '',
+    documentos: []
+  });
+
+  const [batchModal, setBatchModal] = useState<{
+    isOpen: boolean;
+    result: TituloExtracaoResponse | null;
+    chefeNome?: string;
+  }>({
+    isOpen: false,
+    result: null,
+    chefeNome: ''
   });
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -369,27 +391,6 @@ export const Integrantes = () => {
         subtitle="Apenas o nome e a família são obrigatórios. Os demais dados e fotos são opcionais."
         maxWidth="2xl"
       >
-        <div className="mb-4">
-          <DocumentScannerBanner
-            onDataExtracted={(extracted) => {
-              setFormData((prev) => {
-                if (!prev.id && prev.fotoTitulo && extracted.fotoTitulo && prev.fotoTitulo !== extracted.fotoTitulo) {
-                  api.delete(`/api/imagens/${prev.fotoTitulo}`).catch(console.warn);
-                }
-                return {
-                  ...prev,
-                  nome: extracted.nome || prev.nome,
-                  tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
-                  zona: extracted.zona || prev.zona,
-                  secao: extracted.secao || prev.secao,
-                  dataNascimento: extracted.dataNascimento || prev.dataNascimento,
-                  fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
-                };
-              });
-            }}
-          />
-        </div>
-
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className="text-sm font-medium text-gray-700 mb-1 block">Chefe de Família *</label>
@@ -406,6 +407,41 @@ export const Integrantes = () => {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <DocumentScannerBanner
+              chefeFamiliaId={formData.chefeFamiliaId || undefined}
+              onBatchSaved={(batchData) => {
+                const selectedChefe = chefes.find(c => c.id === formData.chefeFamiliaId);
+                setIsFormOpen(false);
+                resetForm();
+                setBatchModal({
+                  isOpen: true,
+                  result: batchData,
+                  chefeNome: selectedChefe?.nome
+                });
+                fetchInitialData();
+              }}
+              onDataExtracted={(extracted) => {
+                setFormData((prev) => {
+                  const fotoParaUsar = extracted.fotoTitulo || extracted.fotoDocumento || prev.fotoTitulo;
+                  if (!prev.id && prev.fotoTitulo && fotoParaUsar && prev.fotoTitulo !== fotoParaUsar) {
+                    api.delete(`/api/imagens/${prev.fotoTitulo}`).catch(console.warn);
+                  }
+                  return {
+                    ...prev,
+                    nome: extracted.nome || prev.nome,
+                    tituloEleitor: extracted.tituloEleitor || prev.tituloEleitor,
+                    zona: extracted.zona || prev.zona,
+                    secao: extracted.secao || prev.secao,
+                    telefone: extracted.telefone ? maskPhone(extracted.telefone) : prev.telefone,
+                    dataNascimento: extracted.dataNascimento || prev.dataNascimento,
+                    fotoTitulo: fotoParaUsar,
+                  };
+                });
+              }}
+            />
           </div>
 
           <Input
@@ -569,20 +605,37 @@ export const Integrantes = () => {
                         </div>
                       </div>
 
-                      {chefe.fotoTitulo && (
-                        <button
-                          onClick={() => setSelectedTitlePhoto({
-                            isOpen: true,
-                            title: `Título de Eleitor - ${chefe.nome}`,
-                            filename: chefe.fotoTitulo,
-                            subtitle: `Título: ${chefe.tituloEleitor || '-'} | Zona: ${chefe.zona || '-'} | Seção: ${chefe.secao || '-'}`
-                          })}
-                          className="inline-flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 font-medium py-1.5 px-3 rounded-lg transition-colors self-start sm:self-auto"
-                        >
-                          <FileText size={15} />
-                          Ver Foto do Título
-                        </button>
-                      )}
+                      <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                        {chefe.fotoTitulo && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTitlePhoto({
+                              isOpen: true,
+                              title: `Título de Eleitor - ${chefe.nome}`,
+                              filename: chefe.fotoTitulo,
+                              subtitle: `Título: ${chefe.tituloEleitor || '-'} | Zona: ${chefe.zona || '-'} | Seção: ${chefe.secao || '-'}`
+                            })}
+                            className="inline-flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 font-medium py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <FileText size={15} />
+                            Ver Foto do Título
+                          </button>
+                        )}
+                        {chefe.documentos && chefe.documentos.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setGalleryModal({
+                              isOpen: true,
+                              chefeNome: chefe.nome,
+                              documentos: chefe.documentos || []
+                            })}
+                            className="inline-flex items-center gap-1.5 text-xs text-indigo-800 bg-indigo-100/80 hover:bg-indigo-200 font-medium py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Files size={15} />
+                            Ver Documentos ({chefe.documentos.length})
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm text-gray-700 bg-white/70 p-3 rounded-lg border border-emerald-200/50">
@@ -872,6 +925,22 @@ export const Integrantes = () => {
         title={selectedTitlePhoto.title}
         filename={selectedTitlePhoto.filename}
         subtitle={selectedTitlePhoto.subtitle}
+      />
+
+      {/* Document Gallery Modal */}
+      <DocumentGalleryModal
+        isOpen={galleryModal.isOpen}
+        onClose={() => setGalleryModal(prev => ({ ...prev, isOpen: false }))}
+        title={`Documentos de ${galleryModal.chefeNome}`}
+        documentos={galleryModal.documentos}
+      />
+
+      {/* Batch Voters Result Modal */}
+      <BatchVotersResultModal
+        isOpen={batchModal.isOpen}
+        onClose={() => setBatchModal({ isOpen: false, result: null })}
+        result={batchModal.result}
+        chefeNome={batchModal.chefeNome}
       />
     </div>
   );

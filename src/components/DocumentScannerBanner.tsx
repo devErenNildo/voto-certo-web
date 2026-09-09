@@ -7,11 +7,15 @@ import toast from 'react-hot-toast';
 interface DocumentScannerBannerProps {
   onDataExtracted: (data: TituloExtracaoResponse) => void;
   className?: string;
+  chefeFamiliaId?: number;
+  onBatchSaved?: (data: TituloExtracaoResponse) => void;
 }
 
 export const DocumentScannerBanner = ({
   onDataExtracted,
-  className = ''
+  className = '',
+  chefeFamiliaId,
+  onBatchSaved
 }: DocumentScannerBannerProps) => {
   const [isScanning, setIsScanning] = useState(false);
   const [lastScannedName, setLastScannedName] = useState<string | null>(null);
@@ -21,17 +25,20 @@ export const DocumentScannerBanner = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validação de tamanho (máximo 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('O arquivo é muito grande. O tamanho máximo permitido é 10MB.');
+    // Validação de tamanho (máximo 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('O arquivo é muito grande. O tamanho máximo permitido é 50MB.');
       return;
     }
 
     setIsScanning(true);
     const formData = new FormData();
     formData.append('file', file);
+    if (chefeFamiliaId) {
+      formData.append('chefeFamiliaId', chefeFamiliaId.toString());
+    }
 
-    const toastId = toast.loading('Analisando Título de Eleitor com IA DeepSeek...');
+    const toastId = toast.loading('Analisando documento com IA DeepSeek Vision...');
 
     try {
       const response = await api.post<TituloExtracaoResponse>('/api/ocr/extrair-titulo', formData, {
@@ -40,19 +47,37 @@ export const DocumentScannerBanner = ({
 
       const data = response.data;
       if (data) {
-        onDataExtracted(data);
-        if (data.sucesso) {
-          toast.success('Dados do Título extraídos com sucesso! Formulário preenchido.', { id: toastId });
-          setLastScannedName(data.nome || 'Documento lido');
+        if (data.multiplos) {
+          // Caso seja lista de eleitores ou múltiplos títulos
+          if (onBatchSaved) {
+            onBatchSaved(data);
+          }
+          toast.success(
+            `✨ ${data.totalSalvos || data.eleitoresSalvos?.length || 'Vários'} eleitores identificados e cadastrados automaticamente!`,
+            { id: toastId, duration: 5000 }
+          );
+          setLastScannedName(`Lista de Eleitores (${data.totalSalvos || 'Múltiplos'} cadastrados)`);
         } else {
-          toast(data.mensagem || 'Foto anexada. Alguns campos não puderam ser lidos automaticamente.', {
-            id: toastId,
-            icon: '⚠️',
-          });
+          // Caso seja uma única pessoa
+          onDataExtracted(data);
+          if (data.sucesso) {
+            toast.success(
+              data.tipoDocumento === 'DOCUMENTO_INDIVIDUAL'
+                ? 'Dados do documento extraídos com sucesso! Formulário preenchido.'
+                : 'Dados do Título extraídos com sucesso! Formulário preenchido.',
+              { id: toastId }
+            );
+            setLastScannedName(data.nome || 'Documento lido');
+          } else {
+            toast(data.mensagem || 'Foto anexada. Alguns campos não puderam ser lidos automaticamente.', {
+              id: toastId,
+              icon: '⚠️',
+            });
+          }
         }
       }
     } catch (error: any) {
-      console.error('Erro ao analisar título', error);
+      console.error('Erro ao analisar documento', error);
       toast.error(
         error.response?.data?.message || 'Não foi possível ler o documento com a IA. Você pode preencher manualmente.',
         { id: toastId }
@@ -88,7 +113,7 @@ export const DocumentScannerBanner = ({
               </span>
             </div>
             <p className="text-xs text-gray-600 mt-0.5">
-              Tire foto ou envie o arquivo do Título (físico ou e-Título) para preencher os dados automaticamente.
+              Envie foto de Título de Eleitor, documento ou folha de lista (manuscrita/impressa) com múltiplos eleitores.
             </p>
             {lastScannedName && !isScanning && (
               <p className="text-[11px] text-emerald-700 font-medium mt-1 flex items-center gap-1">
@@ -121,7 +146,7 @@ export const DocumentScannerBanner = ({
             ) : (
               <>
                 <Camera size={16} />
-                <span>Escanear Título</span>
+                <span>Escanear Título ou Lista</span>
               </>
             )}
           </button>

@@ -7,9 +7,12 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { SecureImage } from '../components/SecureImage';
 import { ImageUploadInput } from '../components/ImageUploadInput';
+import { MultiImageUploadInput } from '../components/MultiImageUploadInput';
 import { DocumentScannerBanner } from '../components/DocumentScannerBanner';
+import { DocumentGalleryModal } from '../components/DocumentGalleryModal';
+import { PhotoModal } from '../components/PhotoModal';
 import { Modal } from '../components/Modal';
-import { Plus, Edit2, Trash2, Search, UserCheck } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, UserCheck, Files, FileText } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskCPF, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
@@ -38,6 +41,7 @@ export const ChefesFamilia = () => {
     dataNascimento: string;
     fotoPerfil: string | null;
     fotoTitulo: string | null;
+    documentos: string[];
   }>({
     id: 0,
     nome: '',
@@ -50,6 +54,29 @@ export const ChefesFamilia = () => {
     dataNascimento: '',
     fotoPerfil: null,
     fotoTitulo: null,
+    documentos: [],
+  });
+
+  const [selectedPhoto, setSelectedPhoto] = useState<{
+    isOpen: boolean;
+    title: string;
+    filename?: string | null;
+    subtitle?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    filename: null,
+    subtitle: ''
+  });
+
+  const [galleryModal, setGalleryModal] = useState<{
+    isOpen: boolean;
+    chefeNome: string;
+    documentos: string[];
+  }>({
+    isOpen: false,
+    chefeNome: '',
+    documentos: []
   });
 
   const fetchChefes = async (pageNumber: number = 0, isInitial: boolean = false) => {
@@ -132,6 +159,7 @@ export const ChefesFamilia = () => {
         dataNascimento: dateApi && dateApi.length === 10 ? dateApi : null,
         fotoPerfil: formData.fotoPerfil || null,
         fotoTitulo: formData.fotoTitulo || null,
+        documentos: formData.documentos || [],
       };
 
       if (formData.id) {
@@ -161,6 +189,7 @@ export const ChefesFamilia = () => {
       dataNascimento: '',
       fotoPerfil: null,
       fotoTitulo: null,
+      documentos: [],
     });
 
   const handleCloseForm = () => {
@@ -170,6 +199,11 @@ export const ChefesFamilia = () => {
       }
       if (formData.fotoTitulo) {
         api.delete(`/api/imagens/${formData.fotoTitulo}`).catch(console.warn);
+      }
+      if (formData.documentos && formData.documentos.length > 0) {
+        formData.documentos.forEach((doc) => {
+          api.delete(`/api/imagens/${doc}`).catch(console.warn);
+        });
       }
     }
     setIsFormOpen(false);
@@ -188,6 +222,7 @@ export const ChefesFamilia = () => {
       dataNascimento: parseDateFromApi(chefe.dataNascimento || ''),
       fotoPerfil: chefe.fotoPerfil || null,
       fotoTitulo: chefe.fotoTitulo || null,
+      documentos: chefe.documentos || [],
     });
     setIsFormOpen(true);
   };
@@ -333,6 +368,22 @@ export const ChefesFamilia = () => {
             />
           </div>
 
+          <div className="md:col-span-2 pt-2 border-t border-gray-100">
+            <MultiImageUploadInput
+              label="Documentos Adicionais (Até 5 fotos - Opcional)"
+              description="Envie RG, CNH, Comprovante de Residência ou Lista de Eleitores vinculada a esta família."
+              maxFiles={5}
+              values={formData.documentos}
+              onChange={(newDocs) => setFormData({ ...formData, documentos: newDocs })}
+              onViewImage={(filename) => setSelectedPhoto({
+                isOpen: true,
+                title: `Documento - ${formData.nome || 'Chefe de Família'}`,
+                filename,
+                subtitle: 'Documento Anexado'
+              })}
+            />
+          </div>
+
           <div className="md:col-span-2 flex justify-end gap-2 pt-4 border-t border-gray-100">
             <Button type="button" variant="ghost" onClick={handleCloseForm}>Cancelar</Button>
             <Button type="submit">Salvar Chefe</Button>
@@ -395,8 +446,43 @@ export const ChefesFamilia = () => {
                     <div className="col-span-2"><span className="text-gray-400 block text-xs">Endereço</span>{chefe.endereco || '-'}</div>
                   </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between items-center">
+
+                <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500 flex flex-wrap justify-between items-center gap-2">
                   <span>Liderança: <strong>{chefe.liderancaNome}</strong></span>
+
+                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    {chefe.fotoTitulo && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPhoto({
+                          isOpen: true,
+                          title: `Título de Eleitor - ${chefe.nome}`,
+                          filename: chefe.fotoTitulo,
+                          subtitle: `Título: ${chefe.tituloEleitor || '-'} | Zona: ${chefe.zona || '-'} | Seção: ${chefe.secao || '-'}`
+                        })}
+                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium py-1 px-2 rounded bg-blue-50 hover:bg-blue-100 transition-colors"
+                        title="Ver Foto do Título"
+                      >
+                        <FileText size={13} />
+                        <span>Ver Título</span>
+                      </button>
+                    )}
+                    {chefe.documentos && chefe.documentos.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setGalleryModal({
+                          isOpen: true,
+                          chefeNome: chefe.nome,
+                          documentos: chefe.documentos || []
+                        })}
+                        className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium py-1 px-2 rounded bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                        title="Ver Documentos Anexados"
+                      >
+                        <Files size={13} />
+                        <span>Ver Documentos ({chefe.documentos.length})</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -421,6 +507,23 @@ export const ChefesFamilia = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Foto Individual */}
+      <PhotoModal
+        isOpen={selectedPhoto.isOpen}
+        onClose={() => setSelectedPhoto(prev => ({ ...prev, isOpen: false }))}
+        title={selectedPhoto.title}
+        filename={selectedPhoto.filename}
+        subtitle={selectedPhoto.subtitle}
+      />
+
+      {/* Modal de Galeria de Documentos do Chefe */}
+      <DocumentGalleryModal
+        isOpen={galleryModal.isOpen}
+        onClose={() => setGalleryModal(prev => ({ ...prev, isOpen: false }))}
+        title={`Documentos de ${galleryModal.chefeNome}`}
+        documentos={galleryModal.documentos}
+      />
     </div>
   );
 };
