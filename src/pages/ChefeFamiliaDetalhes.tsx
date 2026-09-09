@@ -192,6 +192,19 @@ export const ChefeFamiliaDetalhes = () => {
     }
   };
 
+  const handleDeleteTitlePhoto = async () => {
+    if (!selectedTitlePhoto.filename) return;
+    try {
+      await api.delete(`/api/imagens/${selectedTitlePhoto.filename}`);
+      toast.success('Foto apagada com sucesso!');
+      setSelectedTitlePhoto(prev => ({ ...prev, isOpen: false, filename: null }));
+      fetchData();
+    } catch (error: any) {
+      console.error('Erro ao apagar foto', error);
+      toast.error(error.response?.data?.message || 'Erro ao apagar foto.');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-[50vh] w-full items-center justify-center">
@@ -519,6 +532,8 @@ export const ChefeFamiliaDetalhes = () => {
         title={selectedTitlePhoto.title}
         filename={selectedTitlePhoto.filename}
         subtitle={selectedTitlePhoto.subtitle}
+        onDelete={selectedTitlePhoto.filename ? handleDeleteTitlePhoto : undefined}
+        deleteTooltip="Apagar esta foto do título"
       />
 
       {/* Modal de Galeria com Todos os Documentos do Chefe */}
@@ -527,6 +542,7 @@ export const ChefeFamiliaDetalhes = () => {
         onClose={() => setIsGalleryOpen(false)}
         title={`Documentos da Família de ${chefe.nome}`}
         documentos={chefe.documentos || []}
+        onDocumentDeleted={() => fetchData()}
       />
 
       {/* Modal de Alerta de Eleitores Salvos Automaticamente pela IA */}

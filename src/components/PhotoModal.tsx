@@ -1,5 +1,7 @@
-import { X, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { X, FileText, Trash2, Loader2 } from 'lucide-react';
 import { SecureImage } from './SecureImage';
+import { confirmDialog } from '../utils/confirm';
 
 interface PhotoModalProps {
   isOpen: boolean;
@@ -8,6 +10,8 @@ interface PhotoModalProps {
   imageFilename?: string | null;
   filename?: string | null;
   subtitle?: string;
+  onDelete?: () => Promise<void> | void;
+  deleteTooltip?: string;
 }
 
 export const PhotoModal = ({
@@ -16,10 +20,29 @@ export const PhotoModal = ({
   title,
   imageFilename,
   filename,
-  subtitle
+  subtitle,
+  onDelete,
+  deleteTooltip
 }: PhotoModalProps) => {
+  const [isDeleting, setIsDeleting] = useState(false);
   const fileToDisplay = filename || imageFilename;
   if (!isOpen || !fileToDisplay) return null;
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+
+    const confirmed = await confirmDialog('Tem certeza que deseja apagar esta foto? O arquivo será excluído permanentemente do servidor.');
+    if (!confirmed) return;
+
+    try {
+      setIsDeleting(true);
+      await onDelete();
+    } catch (error) {
+      console.error('Erro ao apagar foto no modal', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div
@@ -41,12 +64,30 @@ export const PhotoModal = ({
               {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {onDelete && (
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDelete}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-xl border border-red-200 hover:border-red-600 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                title={deleteTooltip || 'Apagar esta foto'}
+              >
+                {isDeleting ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Trash2 size={15} />
+                )}
+                <span>{isDeleting ? 'Apagando...' : 'Apagar Foto'}</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Image Display */}
@@ -58,7 +99,7 @@ export const PhotoModal = ({
             fallbackIcon={
               <div className="text-center p-8 text-gray-400">
                 <FileText size={40} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Não foi possível carregar a imagem do título.</p>
+                <p className="text-sm">Não foi possível carregar a imagem.</p>
               </div>
             }
           />

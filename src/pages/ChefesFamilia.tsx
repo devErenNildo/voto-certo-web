@@ -240,6 +240,19 @@ export const ChefesFamilia = () => {
     }
   };
 
+  const handleDeletePhoto = async () => {
+    if (!selectedPhoto.filename) return;
+    try {
+      await api.delete(`/api/imagens/${selectedPhoto.filename}`);
+      toast.success('Foto apagada com sucesso!');
+      setSelectedPhoto(prev => ({ ...prev, isOpen: false, filename: null }));
+      fetchChefes(0, true);
+    } catch (error: any) {
+      console.error('Erro ao apagar foto', error);
+      toast.error(error.response?.data?.message || 'Erro ao apagar foto.');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -515,6 +528,8 @@ export const ChefesFamilia = () => {
         title={selectedPhoto.title}
         filename={selectedPhoto.filename}
         subtitle={selectedPhoto.subtitle}
+        onDelete={selectedPhoto.filename ? handleDeletePhoto : undefined}
+        deleteTooltip="Apagar esta foto do título"
       />
 
       {/* Modal de Galeria de Documentos do Chefe */}
@@ -523,6 +538,7 @@ export const ChefesFamilia = () => {
         onClose={() => setGalleryModal(prev => ({ ...prev, isOpen: false }))}
         title={`Documentos de ${galleryModal.chefeNome}`}
         documentos={galleryModal.documentos}
+        onDocumentDeleted={() => fetchChefes(0, true)}
       />
     </div>
   );

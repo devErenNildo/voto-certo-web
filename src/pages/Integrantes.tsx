@@ -310,6 +310,19 @@ export const Integrantes = () => {
     }
   };
 
+  const handleDeleteTitlePhoto = async () => {
+    if (!selectedTitlePhoto.filename) return;
+    try {
+      await api.delete(`/api/imagens/${selectedTitlePhoto.filename}`);
+      toast.success('Foto do título apagada com sucesso!');
+      setSelectedTitlePhoto(prev => ({ ...prev, isOpen: false, filename: null }));
+      fetchInitialData();
+    } catch (error: any) {
+      console.error('Erro ao apagar foto', error);
+      toast.error(error.response?.data?.message || 'Erro ao apagar foto.');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Top Header & Metrics */}
@@ -925,6 +938,8 @@ export const Integrantes = () => {
         title={selectedTitlePhoto.title}
         filename={selectedTitlePhoto.filename}
         subtitle={selectedTitlePhoto.subtitle}
+        onDelete={selectedTitlePhoto.filename ? handleDeleteTitlePhoto : undefined}
+        deleteTooltip="Apagar esta foto do título"
       />
 
       {/* Document Gallery Modal */}
@@ -933,6 +948,7 @@ export const Integrantes = () => {
         onClose={() => setGalleryModal(prev => ({ ...prev, isOpen: false }))}
         title={`Documentos de ${galleryModal.chefeNome}`}
         documentos={galleryModal.documentos}
+        onDocumentDeleted={() => fetchInitialData()}
       />
 
       {/* Batch Voters Result Modal */}
