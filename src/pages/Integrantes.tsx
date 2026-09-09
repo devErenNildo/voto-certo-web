@@ -302,7 +302,11 @@ export const Integrantes = () => {
     if (confirmed) {
       try {
         await api.delete(`/api/integrantes/${id}`);
-        toast.success('Eleitor excluído com sucesso.', { duration: 2500 });
+        const toastId = toast.success('Eleitor excluído com sucesso.', { duration: 2500 });
+        setTimeout(() => {
+          toast.dismiss(toastId);
+          toast.remove(toastId);
+        }, 2500);
         fetchInitialData();
       } catch (error) {
         toast.error('Erro ao excluir eleitor.');
@@ -314,7 +318,11 @@ export const Integrantes = () => {
     if (!selectedTitlePhoto.filename) return;
     try {
       await api.delete(`/api/imagens/${selectedTitlePhoto.filename}`);
-      toast.success('Foto do título apagada com sucesso!');
+      const toastId = toast.success('Foto do título apagada com sucesso!');
+      setTimeout(() => {
+        toast.dismiss(toastId);
+        toast.remove(toastId);
+      }, 2500);
       setSelectedTitlePhoto(prev => ({ ...prev, isOpen: false, filename: null }));
       fetchInitialData();
     } catch (error: any) {

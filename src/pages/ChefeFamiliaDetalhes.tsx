@@ -184,7 +184,11 @@ export const ChefeFamiliaDetalhes = () => {
     if (confirmed) {
       try {
         await api.delete(`/api/integrantes/${eleitorId}`);
-        toast.success('Eleitor excluído com sucesso.', { duration: 2500 });
+        const toastId = toast.success('Eleitor excluído com sucesso.', { duration: 2500 });
+        setTimeout(() => {
+          toast.dismiss(toastId);
+          toast.remove(toastId);
+        }, 2500);
         fetchData();
       } catch (error) {
         toast.error('Erro ao excluir.');
@@ -196,7 +200,11 @@ export const ChefeFamiliaDetalhes = () => {
     if (!selectedTitlePhoto.filename) return;
     try {
       await api.delete(`/api/imagens/${selectedTitlePhoto.filename}`);
-      toast.success('Foto apagada com sucesso!');
+      const toastId = toast.success('Foto apagada com sucesso!');
+      setTimeout(() => {
+        toast.dismiss(toastId);
+        toast.remove(toastId);
+      }, 2500);
       setSelectedTitlePhoto(prev => ({ ...prev, isOpen: false, filename: null }));
       fetchData();
     } catch (error: any) {

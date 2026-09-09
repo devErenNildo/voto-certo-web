@@ -232,7 +232,11 @@ export const ChefesFamilia = () => {
     if (confirmed) {
       try {
         await api.delete(`/api/chefes-familia/${id}`);
-        toast.success('Chefe de família excluído.');
+        const toastId = toast.success('Chefe de família excluído.', { duration: 2500 });
+        setTimeout(() => {
+          toast.dismiss(toastId);
+          toast.remove(toastId);
+        }, 2500);
         fetchChefes(0, true);
       } catch (error) {
         toast.error('Erro ao excluir.');
@@ -244,7 +248,11 @@ export const ChefesFamilia = () => {
     if (!selectedPhoto.filename) return;
     try {
       await api.delete(`/api/imagens/${selectedPhoto.filename}`);
-      toast.success('Foto apagada com sucesso!');
+      const toastId = toast.success('Foto apagada com sucesso!');
+      setTimeout(() => {
+        toast.dismiss(toastId);
+        toast.remove(toastId);
+      }, 2500);
       setSelectedPhoto(prev => ({ ...prev, isOpen: false, filename: null }));
       fetchChefes(0, true);
     } catch (error: any) {

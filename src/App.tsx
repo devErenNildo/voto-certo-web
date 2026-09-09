@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster, ToastBar } from 'react-hot-toast';
+import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/Layout';
@@ -62,7 +63,10 @@ function App() {
         <Toaster
           position="top-center"
           gutter={8}
-          containerStyle={{ top: 20 }}
+          containerStyle={{
+            top: 20,
+            bottom: 'auto',
+          }}
           toastOptions={{
             duration: 2500,
             success: {
@@ -72,7 +76,39 @@ function App() {
               duration: 3500,
             },
           }}
-        />
+        >
+          {(t) => (
+            <ToastBar toast={t}>
+              {({ icon, message }) => (
+                <div
+                  onClick={() => {
+                    toast.dismiss(t.id);
+                    toast.remove(t.id);
+                  }}
+                  className="flex items-center gap-2 cursor-pointer select-none"
+                  title="Clique para fechar"
+                >
+                  {icon}
+                  <span className="text-sm font-medium">{message}</span>
+                  {t.type !== 'loading' && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toast.dismiss(t.id);
+                        toast.remove(t.id);
+                      }}
+                      className="ml-2 p-1 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
+                      aria-label="Fechar"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </ToastBar>
+          )}
+        </Toaster>
       </BrowserRouter>
     </AuthProvider>
   );
