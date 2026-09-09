@@ -302,7 +302,7 @@ export const Integrantes = () => {
     if (confirmed) {
       try {
         await api.delete(`/api/integrantes/${id}`);
-        toast.success('Eleitor excluído com sucesso.');
+        toast.success('Eleitor excluído com sucesso.', { duration: 2500 });
         fetchInitialData();
       } catch (error) {
         toast.error('Erro ao excluir eleitor.');
@@ -731,9 +731,12 @@ export const Integrantes = () => {
                                     <Edit2 size={15} />
                                   </button>
                                   <button
-                                    onClick={() => handleDelete(integrante.id)}
-                                    className="p-1 text-gray-500 hover:text-red-600 rounded-full hover:bg-white transition-colors"
-                                    title="Excluir Eleitor"
+                                    onClick={(e) => {
+                                      e.currentTarget.blur();
+                                      handleDelete(integrante.id);
+                                    }}
+                                    className="p-1 text-gray-500 hover:text-red-600 rounded-full hover:bg-white transition-colors cursor-pointer"
+                                    aria-label="Excluir Eleitor"
                                   >
                                     <Trash2 size={15} />
                                   </button>
@@ -866,9 +869,12 @@ export const Integrantes = () => {
                               <Edit2 size={15} />
                             </button>
                             <button
-                              onClick={() => handleDelete(integrante.id)}
-                              className="p-1 text-gray-500 hover:text-red-600 rounded-full hover:bg-white transition-colors"
-                              title="Excluir"
+                              onClick={(e) => {
+                                e.currentTarget.blur();
+                                handleDelete(integrante.id);
+                              }}
+                              className="p-1 text-gray-500 hover:text-red-600 rounded-full hover:bg-white transition-colors cursor-pointer"
+                              aria-label="Excluir Eleitor"
                             >
                               <Trash2 size={15} />
                             </button>

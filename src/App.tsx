@@ -59,7 +59,20 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <AppRoutes />
-        <Toaster position="top-center" />
+        <Toaster
+          position="top-center"
+          gutter={8}
+          containerStyle={{ top: 20 }}
+          toastOptions={{
+            duration: 2500,
+            success: {
+              duration: 2500,
+            },
+            error: {
+              duration: 3500,
+            },
+          }}
+        />
       </BrowserRouter>
     </AuthProvider>
   );

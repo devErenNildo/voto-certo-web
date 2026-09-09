@@ -184,7 +184,7 @@ export const ChefeFamiliaDetalhes = () => {
     if (confirmed) {
       try {
         await api.delete(`/api/integrantes/${eleitorId}`);
-        toast.success('Eleitor excluído com sucesso.');
+        toast.success('Eleitor excluído com sucesso.', { duration: 2500 });
         fetchData();
       } catch (error) {
         toast.error('Erro ao excluir.');
@@ -464,7 +464,14 @@ export const ChefeFamiliaDetalhes = () => {
                     <button onClick={() => handleEdit(eleitor)} className="p-1.5 text-gray-500 hover:text-blue-600 rounded-full hover:bg-white transition-colors" title="Editar">
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={() => handleDelete(eleitor.id)} className="p-1.5 text-gray-500 hover:text-red-600 rounded-full hover:bg-white transition-colors" title="Excluir">
+                    <button
+                      onClick={(e) => {
+                        e.currentTarget.blur();
+                        handleDelete(eleitor.id);
+                      }}
+                      className="p-1.5 text-gray-500 hover:text-red-600 rounded-full hover:bg-white transition-colors cursor-pointer"
+                      aria-label="Excluir Eleitor"
+                    >
                       <Trash2 size={16} />
                     </button>
                   </div>
