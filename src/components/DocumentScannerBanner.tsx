@@ -38,7 +38,7 @@ export const DocumentScannerBanner = ({
       formData.append('chefeFamiliaId', chefeFamiliaId.toString());
     }
 
-    const toastId = toast.loading('Analisando documento com IA DeepSeek Vision...');
+    const toastId = toast.loading('Analisando documento com IA Google Gemini...');
 
     try {
       const response = await api.post<TituloExtracaoResponse>('/api/ocr/extrair-titulo', formData, {
@@ -109,7 +109,7 @@ export const DocumentScannerBanner = ({
                 Preenchimento Inteligente com IA
               </h4>
               <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                DeepSeek Vision
+                Google Gemini
               </span>
             </div>
             <p className="text-xs text-gray-600 mt-0.5">
