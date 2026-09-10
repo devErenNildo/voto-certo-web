@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import type { ChefeFamiliaResponse } from '../types';
+import type { ChefeFamiliaResponse, TituloExtracaoResponse } from '../types';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -12,6 +12,7 @@ import { DocumentScannerBanner } from '../components/DocumentScannerBanner';
 import { DocumentGalleryModal } from '../components/DocumentGalleryModal';
 import { PhotoModal } from '../components/PhotoModal';
 import { Modal } from '../components/Modal';
+import { EscolhaChefeModal } from '../components/EscolhaChefeModal';
 import { Plus, Edit2, Trash2, Search, UserCheck, Files, FileText } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskCPF, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
@@ -78,6 +79,9 @@ export const ChefesFamilia = () => {
     chefeNome: '',
     documentos: []
   });
+
+  const [isEscolhaChefeOpen, setIsEscolhaChefeOpen] = useState(false);
+  const [listaResult, setListaResult] = useState<TituloExtracaoResponse | null>(null);
 
   const fetchChefes = async (pageNumber: number = 0, isInitial: boolean = false) => {
     try {
@@ -293,6 +297,12 @@ export const ChefesFamilia = () => {
         <div className="mb-4">
           <DocumentScannerBanner
             onDataExtracted={(extracted) => {
+              if (extracted.multiplos && extracted.eleitoresIdentificados && extracted.eleitoresIdentificados.length > 0) {
+                setListaResult(extracted);
+                setIsEscolhaChefeOpen(true);
+                setIsFormOpen(false);
+                return;
+              }
               setFormData((prev) => {
                 if (!prev.id && prev.fotoTitulo && extracted.fotoTitulo && prev.fotoTitulo !== extracted.fotoTitulo) {
                   api.delete(`/api/imagens/${prev.fotoTitulo}`).catch(console.warn);
@@ -547,6 +557,24 @@ export const ChefesFamilia = () => {
         title={`Documentos de ${galleryModal.chefeNome}`}
         documentos={galleryModal.documentos}
         onDocumentDeleted={() => fetchChefes(0, true)}
+      />
+
+      {/* Modal de Escolha do Chefe de Família a partir de Lista OCR */}
+      <EscolhaChefeModal
+        isOpen={isEscolhaChefeOpen}
+        onClose={() => {
+          if (listaResult?.fotoDocumento) {
+            api.delete(`/api/imagens/${listaResult.fotoDocumento}`).catch(console.warn);
+          }
+          setIsEscolhaChefeOpen(false);
+          setListaResult(null);
+        }}
+        result={listaResult}
+        onSuccess={() => {
+          setIsEscolhaChefeOpen(false);
+          setListaResult(null);
+          fetchChefes(0, true);
+        }}
       />
     </div>
   );

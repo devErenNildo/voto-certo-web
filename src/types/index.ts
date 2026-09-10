@@ -79,6 +79,23 @@ export interface PageResponse<T> {
   empty: boolean;
 }
 
+export interface EleitorExtraido {
+  nome: string;
+  tituloEleitor?: string | null;
+  zona?: string | null;
+  secao?: string | null;
+  telefone?: string | null;
+  dataNascimento?: string | null;
+}
+
+export interface CadastroFamiliaComListaRequest {
+  chefe: EleitorExtraido;
+  integrantes: EleitorExtraido[];
+  endereco?: string;
+  bairro?: string;
+  fotoDocumento?: string;
+}
+
 export interface TituloExtracaoResponse {
   tipoDocumento?: 'TITULO_INDIVIDUAL' | 'DOCUMENTO_INDIVIDUAL' | 'LISTA';
   multiplos?: boolean;
@@ -94,6 +111,7 @@ export interface TituloExtracaoResponse {
   totalSalvos?: number;
   documentoSalvoEmChefe?: string;
   eleitoresSalvos?: IntegranteResponse[];
+  eleitoresIdentificados?: EleitorExtraido[];
   mensagem?: string;
   sucesso: boolean;
 }

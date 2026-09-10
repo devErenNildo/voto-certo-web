@@ -49,14 +49,21 @@ export const DocumentScannerBanner = ({
       if (data) {
         if (data.multiplos) {
           // Caso seja lista de eleitores ou múltiplos títulos
-          if (onBatchSaved) {
+          if (onBatchSaved && chefeFamiliaId) {
             onBatchSaved(data);
+            toast.success(
+              `✨ ${data.totalSalvos || data.eleitoresSalvos?.length || 'Vários'} eleitores identificados e cadastrados automaticamente!`,
+              { id: toastId, duration: 5000 }
+            );
+            setLastScannedName(`Lista de Eleitores (${data.totalSalvos || 'Múltiplos'} cadastrados)`);
+          } else if (onDataExtracted) {
+            onDataExtracted(data);
+            toast.success(
+              `✨ Lista identificada com ${data.eleitoresIdentificados?.length || 'vários'} eleitores! Escolha quem será o Chefe de Família.`,
+              { id: toastId, duration: 5000 }
+            );
+            setLastScannedName(`Lista (${data.eleitoresIdentificados?.length || 0} eleitores identificados)`);
           }
-          toast.success(
-            `✨ ${data.totalSalvos || data.eleitoresSalvos?.length || 'Vários'} eleitores identificados e cadastrados automaticamente!`,
-            { id: toastId, duration: 5000 }
-          );
-          setLastScannedName(`Lista de Eleitores (${data.totalSalvos || 'Múltiplos'} cadastrados)`);
         } else {
           // Caso seja uma única pessoa
           onDataExtracted(data);
