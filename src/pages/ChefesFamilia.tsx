@@ -329,6 +329,10 @@ export const ChefesFamilia = () => {
                 if (!prev.id && prev.fotoTitulo && extracted.fotoTitulo && prev.fotoTitulo !== extracted.fotoTitulo) {
                   api.delete(`/api/imagens/${prev.fotoTitulo}`).catch(console.warn);
                 }
+                const novosDocumentos = [...(prev.documentos || [])];
+                if (extracted.fotoDocumento && !novosDocumentos.includes(extracted.fotoDocumento)) {
+                  novosDocumentos.push(extracted.fotoDocumento);
+                }
                 return {
                   ...prev,
                   nome: extracted.nome || prev.nome,
@@ -337,6 +341,7 @@ export const ChefesFamilia = () => {
                   secao: extracted.secao || prev.secao,
                   dataNascimento: extracted.dataNascimento || prev.dataNascimento,
                   fotoTitulo: extracted.fotoTitulo || prev.fotoTitulo,
+                  documentos: novosDocumentos,
                 };
               });
             }}
@@ -621,8 +626,9 @@ export const ChefesFamilia = () => {
       <EscolhaChefeModal
         isOpen={isEscolhaChefeOpen}
         onClose={() => {
-          if (listaResult?.fotoDocumento) {
-            api.delete(`/api/imagens/${listaResult.fotoDocumento}`).catch(console.warn);
+          const docToDelete = listaResult?.fotoDocumento || listaResult?.fotoTitulo;
+          if (docToDelete) {
+            api.delete(`/api/imagens/${docToDelete}`).catch(console.warn);
           }
           setIsEscolhaChefeOpen(false);
           setListaResult(null);

@@ -53,7 +53,7 @@ export const EscolhaChefeModal: React.FC<EscolhaChefeModalProps> = ({
 
   if (!isOpen || !result) return null;
 
-  const docFilename = result.fotoDocumento;
+  const docFilename = result.fotoDocumento || result.fotoTitulo;
   const chefeSelecionado = eleitores[selectedIndex];
 
   const handleUpdateField = (index: number, field: keyof EleitorExtraido, value: string) => {
@@ -121,7 +121,6 @@ export const EscolhaChefeModal: React.FC<EscolhaChefeModalProps> = ({
         { id: toastId, duration: 5000 }
       );
       onSuccess(response.data);
-      onClose();
     } catch (error: any) {
       console.error('Erro ao cadastrar com lista', error);
       toast.error(error.response?.data?.message || 'Erro ao cadastrar família a partir da lista.', { id: toastId });
