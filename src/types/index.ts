@@ -21,6 +21,7 @@ export interface LiderancaResponse {
   bairro: string;
   totalChefes: number;
   totalIntegrantes: number;
+  totalVotos?: number;
   createdAt: string;
 }
 
@@ -33,6 +34,7 @@ export interface ChefeFamiliaResponse {
   secao: string;
   telefone: string;
   dataNascimento?: string;
+  bairro?: string;
   endereco: string;
   fotoPerfil?: string | null;
   fotoTitulo?: string | null;
@@ -41,6 +43,7 @@ export interface ChefeFamiliaResponse {
   liderancaNome: string;
   atribuidoAoCandidato?: boolean;
   totalIntegrantes: number;
+  totalEleitores?: number;
   createdAt: string;
   updatedAt?: string;
 }

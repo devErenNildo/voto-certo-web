@@ -5,7 +5,8 @@ import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Modal } from '../components/Modal';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { DetalhesLiderancaModal } from '../components/DetalhesLiderancaModal';
+import { Plus, Edit2, Trash2, ChevronRight } from 'lucide-react';
 import { maskDate, parseDateToApi, parseDateFromApi, maskPhone } from '../utils/masks';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../utils/confirm';
@@ -14,6 +15,8 @@ export const Liderancas = () => {
   const [liderancas, setLiderancas] = useState<LiderancaResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedLideranca, setSelectedLideranca] = useState<LiderancaResponse | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [formData, setFormData] = useState({ id: 0, name: '', username: '', password: '', telefone: '', dataNascimento: '', bairro: '' });
 
   const fetchLiderancas = async () => {
@@ -159,18 +162,43 @@ export const Liderancas = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {liderancas.map(lid => (
-            <Card key={lid.id}>
+            <Card 
+              key={lid.id}
+              className="cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200 group border-gray-200"
+              onClick={() => {
+                setSelectedLideranca(lid);
+                setIsDetailsOpen(true);
+              }}
+            >
               <CardContent className="p-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-semibold text-lg">{lid.name}</h3>
+                    <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
+                      {lid.name}
+                    </h3>
                     <p className="text-sm text-gray-500">@{lid.username}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleEdit(lid)} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50">
+                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(lid);
+                      }} 
+                      className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors cursor-pointer"
+                      title="Editar liderança"
+                    >
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={() => handleDelete(lid.id)} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50">
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(lid.id);
+                      }} 
+                      className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors cursor-pointer"
+                      title="Excluir liderança"
+                    >
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -180,12 +208,18 @@ export const Liderancas = () => {
                   {lid.bairro && <div><span className="text-gray-400 font-medium">Bairro:</span> {lid.bairro}</div>}
                   {lid.dataNascimento && <div><span className="text-gray-400 font-medium">Nasc:</span> {new Date(lid.dataNascimento).toLocaleDateString('pt-BR')}</div>}
                 </div>
-                <div className="mt-4 flex gap-4 text-sm">
-                  <div className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded">
-                    <span className="font-bold">{lid.totalChefes}</span> Chefes
+                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <div className="flex gap-2 text-xs">
+                    <div className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded font-medium">
+                      <span className="font-bold">{lid.totalChefes}</span> Chefes
+                    </div>
+                    <div className="bg-blue-50 text-blue-700 px-2 py-1 rounded font-medium">
+                      <span className="font-bold">{lid.totalVotos ?? (lid.totalChefes + lid.totalIntegrantes)}</span> Votos
+                    </div>
                   </div>
-                  <div className="bg-purple-50 text-purple-700 px-2 py-1 rounded">
-                    <span className="font-bold">{lid.totalIntegrantes}</span> Votos
+                  <div className="text-xs font-semibold text-blue-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                    <span>Ver chefes</span>
+                    <ChevronRight size={14} />
                   </div>
                 </div>
               </CardContent>
@@ -198,6 +232,16 @@ export const Liderancas = () => {
           )}
         </div>
       )}
+
+      {/* Modal de Detalhes da Liderança (Chefes e Eleitores) */}
+      <DetalhesLiderancaModal
+        isOpen={isDetailsOpen}
+        onClose={() => {
+          setIsDetailsOpen(false);
+          setSelectedLideranca(null);
+        }}
+        lideranca={selectedLideranca}
+      />
     </div>
   );
 };
