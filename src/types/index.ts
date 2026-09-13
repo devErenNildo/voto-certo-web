@@ -39,6 +39,7 @@ export interface ChefeFamiliaResponse {
   documentos?: string[];
   liderancaId: number;
   liderancaNome: string;
+  atribuidoAoCandidato?: boolean;
   totalIntegrantes: number;
   createdAt: string;
   updatedAt?: string;
@@ -94,6 +95,7 @@ export interface CadastroFamiliaComListaRequest {
   endereco?: string;
   bairro?: string;
   fotoDocumento?: string;
+  liderancaId?: number;
 }
 
 export interface TituloExtracaoResponse {

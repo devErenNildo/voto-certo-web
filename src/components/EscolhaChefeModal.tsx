@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Crown, Users, Eye, AlertCircle, Check, Trash2, Edit2, Loader2, MapPin } from 'lucide-react';
-import type { TituloExtracaoResponse, EleitorExtraido, ChefeFamiliaResponse, CadastroFamiliaComListaRequest } from '../types';
+import { X, Crown, Users, Eye, AlertCircle, Check, Trash2, Edit2, Loader2, MapPin, UserCheck } from 'lucide-react';
+import type { TituloExtracaoResponse, EleitorExtraido, ChefeFamiliaResponse, CadastroFamiliaComListaRequest, LiderancaResponse } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { PhotoModal } from './PhotoModal';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -18,7 +19,10 @@ export const EscolhaChefeModal: React.FC<EscolhaChefeModalProps> = ({
   result,
   onSuccess,
 }) => {
+  const { user } = useAuth();
   const [eleitores, setEleitores] = useState<EleitorExtraido[]>([]);
+  const [liderancas, setLiderancas] = useState<LiderancaResponse[]>([]);
+  const [selectedLiderancaId, setSelectedLiderancaId] = useState<number>(0);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [endereco, setEndereco] = useState<string>('');
   const [bairro, setBairro] = useState<string>('');
@@ -27,11 +31,20 @@ export const EscolhaChefeModal: React.FC<EscolhaChefeModalProps> = ({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   useEffect(() => {
+    if (user?.role === 'CANDIDATO') {
+      api.get<LiderancaResponse[]>('/api/liderancas')
+        .then(res => setLiderancas(res.data || []))
+        .catch(err => console.warn('Erro ao carregar lideranças no modal de escolha', err));
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (result && result.eleitoresIdentificados && result.eleitoresIdentificados.length > 0) {
       setEleitores([...result.eleitoresIdentificados]);
       setSelectedIndex(0);
       setEndereco('');
       setBairro('');
+      setSelectedLiderancaId(0);
       setEditingIndex(null);
     } else {
       setEleitores([]);
@@ -95,6 +108,7 @@ export const EscolhaChefeModal: React.FC<EscolhaChefeModalProps> = ({
       endereco: endereco.trim() || undefined,
       bairro: bairro.trim() || undefined,
       fotoDocumento: docFilename || undefined,
+      liderancaId: user?.role === 'CANDIDATO' ? (Number(selectedLiderancaId) || 0) : undefined,
     };
 
     setIsSubmitting(true);
@@ -175,6 +189,43 @@ export const EscolhaChefeModal: React.FC<EscolhaChefeModalProps> = ({
                 </button>
               )}
             </div>
+
+            {/* Vínculo da Família / Liderança Responsável */}
+            {user?.role === 'CANDIDATO' && (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50/90 to-indigo-50/70 border border-blue-200/80 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-900 uppercase tracking-wider">
+                    <UserCheck size={15} className="text-blue-600" />
+                    <span>Liderança Responsável pela Família</span>
+                  </div>
+                  <span className="text-[11px] font-medium text-blue-700 bg-blue-100/80 px-2.5 py-0.5 rounded-full">
+                    Definição de Vínculo
+                  </span>
+                </div>
+                <p className="text-xs text-blue-800/80">
+                  Defina se esta família ficará vinculada diretamente a você (Gabinete/Candidato) ou sob responsabilidade de uma liderança da campanha.
+                </p>
+                <select
+                  id="escolha-chefe-lideranca-select"
+                  className="w-full px-3 py-2 text-xs font-semibold bg-white border border-blue-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden shadow-xs cursor-pointer"
+                  value={selectedLiderancaId}
+                  onChange={(e) => setSelectedLiderancaId(Number(e.target.value))}
+                >
+                  <option value={0}>
+                    ⭐ Atribuir a mim mesmo ({user?.name || 'Próprio Candidato / Gabinete'})
+                  </option>
+                  {liderancas.length > 0 && (
+                    <optgroup label="Lideranças da Campanha">
+                      {liderancas.map((lid) => (
+                        <option key={lid.id} value={lid.id}>
+                          👤 {lid.name} {lid.bairro ? `(Bairro: ${lid.bairro})` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+            )}
 
             {/* Endereço da Família (Opcional) */}
             <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3">

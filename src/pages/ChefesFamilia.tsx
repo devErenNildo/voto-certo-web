@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import type { ChefeFamiliaResponse, TituloExtracaoResponse } from '../types';
+import type { ChefeFamiliaResponse, LiderancaResponse, TituloExtracaoResponse } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -20,8 +21,10 @@ import { confirmDialog } from '../utils/confirm';
 
 export const ChefesFamilia = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [chefes, setChefes] = useState<ChefeFamiliaResponse[]>([]);
   const [filteredChefes, setFilteredChefes] = useState<ChefeFamiliaResponse[]>([]);
+  const [liderancas, setLiderancas] = useState<LiderancaResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -43,6 +46,7 @@ export const ChefesFamilia = () => {
     fotoPerfil: string | null;
     fotoTitulo: string | null;
     documentos: string[];
+    liderancaId: number;
   }>({
     id: 0,
     nome: '',
@@ -56,6 +60,7 @@ export const ChefesFamilia = () => {
     fotoPerfil: null,
     fotoTitulo: null,
     documentos: [],
+    liderancaId: 0,
   });
 
   const [selectedPhoto, setSelectedPhoto] = useState<{
@@ -112,9 +117,22 @@ export const ChefesFamilia = () => {
     }
   };
 
+  const fetchLiderancas = async () => {
+    if (user?.role !== 'CANDIDATO') return;
+    try {
+      const res = await api.get<LiderancaResponse[]>('/api/liderancas');
+      setLiderancas(res.data || []);
+    } catch (err) {
+      console.warn('Não foi possível carregar lista de lideranças', err);
+    }
+  };
+
   useEffect(() => {
     fetchChefes(0, true);
-  }, []);
+    if (user?.role === 'CANDIDATO') {
+      fetchLiderancas();
+    }
+  }, [user]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -137,7 +155,8 @@ export const ChefesFamilia = () => {
     const results = chefes.filter(c =>
       c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.cpf && c.cpf.includes(searchTerm)) ||
-      (c.tituloEleitor && c.tituloEleitor.toLowerCase().includes(searchTerm.toLowerCase()))
+      (c.tituloEleitor && c.tituloEleitor.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (c.liderancaNome && c.liderancaNome.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredChefes(results);
   }, [searchTerm, chefes]);
@@ -164,6 +183,7 @@ export const ChefesFamilia = () => {
         fotoPerfil: formData.fotoPerfil || null,
         fotoTitulo: formData.fotoTitulo || null,
         documentos: formData.documentos || [],
+        liderancaId: user?.role === 'CANDIDATO' ? (Number(formData.liderancaId) || 0) : undefined,
       };
 
       if (formData.id) {
@@ -194,6 +214,7 @@ export const ChefesFamilia = () => {
       fotoPerfil: null,
       fotoTitulo: null,
       documentos: [],
+      liderancaId: 0,
     });
 
   const handleCloseForm = () => {
@@ -227,6 +248,7 @@ export const ChefesFamilia = () => {
       fotoPerfil: chefe.fotoPerfil || null,
       fotoTitulo: chefe.fotoTitulo || null,
       documentos: chefe.documentos || [],
+      liderancaId: chefe.atribuidoAoCandidato ? 0 : (chefe.liderancaId || 0),
     });
     setIsFormOpen(true);
   };
@@ -322,6 +344,42 @@ export const ChefesFamilia = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {user?.role === 'CANDIDATO' && (
+            <div className="md:col-span-2 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 p-3.5 rounded-xl border border-blue-200/70 shadow-xs">
+              <label htmlFor="chefe-lideranca-select" className="block text-xs font-semibold uppercase tracking-wider text-blue-900 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <UserCheck size={16} className="text-blue-600" />
+                  Liderança Responsável pela Família
+                </span>
+                <span className="text-[11px] font-medium text-blue-700 bg-blue-100/80 px-2.5 py-0.5 rounded-full">
+                  Definição de Vínculo
+                </span>
+              </label>
+              <p className="text-xs text-blue-800/80 mb-2">
+                Defina se esta família ficará vinculada diretamente a você (Gabinete/Candidato) ou sob responsabilidade de uma liderança da campanha.
+              </p>
+              <select
+                id="chefe-lideranca-select"
+                className="w-full bg-white border border-blue-200 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-2.5 font-medium transition-all shadow-xs"
+                value={formData.liderancaId}
+                onChange={(e) => setFormData({ ...formData, liderancaId: Number(e.target.value) })}
+              >
+                <option value={0}>
+                  ⭐ Atribuir a mim mesmo ({user?.name || 'Próprio Candidato / Gabinete'})
+                </option>
+                {liderancas.length > 0 && (
+                  <optgroup label="Lideranças da Campanha">
+                    {liderancas.map((lid) => (
+                      <option key={lid.id} value={lid.id}>
+                        👤 {lid.name} {lid.bairro ? `(Bairro: ${lid.bairro})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </div>
+          )}
+
           <Input 
             label="Nome Completo *" 
             required 
