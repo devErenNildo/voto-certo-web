@@ -98,6 +98,7 @@ export interface CadastroFamiliaComListaRequest {
   endereco?: string;
   bairro?: string;
   fotoDocumento?: string;
+  fotoTitulo?: string;
   liderancaId?: number;
 }
 
